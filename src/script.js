@@ -4347,15 +4347,18 @@ let rawtext = `2 1 -9 9.80816192705233
 7 21 -2 -187.778922869214
 7 4.5 2.5 312.915034560513
 7 4.5 -5.5 237.321414461628
-7 17 -6 266.213125875064
-`
+7 17 -6 266.213125875064`
 class App {
     constructor() {
+        this.settings={
+            resetSceneOnLoad:true
+        }
         this.data = [];
         this.scene = {};
         this.objects = {};
         this.initInfo();
         this.init();
+
     }
     init() {
         this.initSettings();
@@ -4363,8 +4366,8 @@ class App {
         this.initDragAndDrop();
         this.initTHREE();
         this.parseData(rawtext);
-        this.renderData();
         // this.calcCenter();
+        this.renderData();
         this.initGUI();
     }
     initSettings() {
@@ -4380,6 +4383,7 @@ class App {
                 serviceA: { level: "8", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service A points" },
                 serviceB: { level: "9", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service B point" },
         };
+        
     }
     initTHREE() {
         const canvas = document.querySelector("canvas.webgl");
@@ -4447,6 +4451,7 @@ class App {
             },
         };
         this.loadbtn = this.gui.add(loaddataconf, "add").name("Load data");
+        this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
         this.loaddGUI();
     }
     loaddGUI() {
@@ -4540,7 +4545,7 @@ class App {
                 reader.addEventListener("load", (event) => {
                     let response = event.target.result;
                     this.parseData(response);
-                    this.resetScene();
+                    if (thus.settings.resetSceneOnLoad) this.resetScene();
                     this.renderData();
                     this.initGUI();
                 });
@@ -4596,7 +4601,7 @@ class App {
                       reader.addEventListener("load", (event) => {
                           let response = event.target.result;
                           thus.parseData(response);
-                          thus.resetScene();
+                          if (thus.settings.resetSceneOnLoad) thus.resetScene();
                           thus.renderData();
                           thus.initGUI();
                       });
@@ -4623,7 +4628,7 @@ class App {
             obj.points = new THREE.Points(obj.geometry, obj.material);
             
             obj.geometry.rotateX(-1.5);
-            obj.geometry.translate(-1, -2, 11);
+            // obj.geometry.translate(-1, -2, 11);
 
             this.scene.add(obj.points);
         }
@@ -4642,38 +4647,45 @@ class App {
         this.data = tmp.map((item) => {
             return item.split(" ");
         });
+        this.data = this.data.filter(i=>{return i.length > 1 })
+        if(this.settings.resetSceneOnLoad) this.calcCenter();
     }
     calcCenter(){
-        let filtered_data = [];
-        function arrayMax(array) {
-            return array.reduce(function(a, b) {
-              return Math.max(a, b);
-            });
-          }
-          
-          function arrayMin(array) {
-            return array.reduce(function(a, b) {
-              return Math.min(a, b);
-            });
-          }
-        for (let [type, obj] of Object.entries(this.objects)) {
-            if (obj.level <= 1 || obj.level >= 7) continue
-            const raw = this.data.filter((item) => {
-                return (item[0] >= 2 || item[0] <= 6)
-            });
-            if (raw.length === 0) continue;
-
-            let x = [];
-            let y = [];
-            this.data.forEach(i=>{x.push(i[1]);y.push(i[2])})
-            let x_max = arrayMax(x);
-            let x_min = arrayMin(x);
-            const dataBuffer = [];
-
-            obj.geometry.rotateX(-1.5);
-            obj.geometry.translate(x_min, -2, 11);
+        console.log("recalc called")
+        for(let i = 0; i<this.data.length;i++){
+            for(let j = 0; j < this.data[i].length;j++)
+                if (!this.data[j]|| Number.isNaN(this.data[j]))
+                    this.data.splice(i, 1);
+            }
+        let meanX = 0,meanY = 0, meanZ = 0;
+        let x = [];
+        let y = [];
+        let z = [];
+        for (let i = 0; i < this.data.length; i++){
+            let item = this.data[i]
+            if(item[0]>2 && item[0]<6) continue;
+            x.push(item[1]);
+            y.push(item[2]);
+            z.push(item[3]);
         }
+
+        meanX = this.arrAvg(x);
+        meanY = this.arrAvg(y);
+        meanZ = this.arrAvg(z);
+        for (let i = 0; i < this.data.length; i++){
+            this.data[i][1] = this.data[i][1] - meanX // красный
+            this.data[i][2] = this.data[i][2] - meanY // + синий -
+            this.data[i][3] = this.data[i][3] - meanZ // зеленый
+        }
+
     } 
+    arrAvg(arr){
+        for(let i = 0; i<arr.length;i++){
+                arr[i] = parseFloat(arr[i])
+        }
+        let sum = arr.reduce((a, b) => a + b, 0);
+        return (sum / arr.length);
+    }
 }
 let app = new App();
 console.log(app)
