@@ -4451,7 +4451,7 @@ class App {
             },
         };
         this.loadbtn = this.gui.add(loaddataconf, "add").name("Load data");
-        this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
+        // this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
         this.loaddGUI();
     }
     loaddGUI() {
@@ -4544,8 +4544,8 @@ class App {
                 const reader = new FileReader();
                 reader.addEventListener("load", (event) => {
                     let response = event.target.result;
-                    this.parseData(response);
                     if (thus.settings.resetSceneOnLoad) this.resetScene();
+                    this.parseData(response);
                     this.renderData();
                     this.initGUI();
                 });
@@ -4639,7 +4639,7 @@ class App {
             if (obj.points) this.scene.remove( obj.points );
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) obj.material.dispose();
-        }
+        }   
     }
     parseData(text) {
         let tmp = text.split("\n");
