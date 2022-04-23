@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import Stats from 'stats.js/build/stats.min.js';
 import * as dat from 'dat.gui'
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
 
 let rawtext = `2 1 -9 9.80816192705233
@@ -4356,6 +4357,8 @@ class App {
         this.data = [];
         this.scene = {};
         this.objects = {};
+        this.pickedPoints = [];
+        this.pickedPointsInfo = [];
         this.initInfo();
         this.init();
 
@@ -4367,6 +4370,7 @@ class App {
         this.initTHREE();
         this.parseData(rawtext);
         // this.calcCenter();
+        this.initRayCast();
         this.renderData();
         this.initGUI();
     }
@@ -4383,12 +4387,20 @@ class App {
                 serviceA: { level: "8", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service A points" },
                 serviceB: { level: "9", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service B point" },
         };
+
+        this.AxesHelperSettings = {
+            canvas: {
+                width: 100,
+                height: 100,
+            }
+        };
         
     }
     initTHREE() {
         const canvas = document.querySelector("canvas.webgl");
         // Init scene
         this.scene = new THREE.Scene();
+        this.axesScene = new THREE.Scene();
 
         this.initSizes();
 
@@ -4397,6 +4409,9 @@ class App {
         this.camera.position.x = 20;
         this.camera.position.y = 0;
         this.camera.position.z = 20;
+
+        this.axesCamera = new THREE.PerspectiveCamera(75, this.AxesHelperSettings.canvas.width / this.AxesHelperSettings.canvas.height, 0.1, 10000);
+        this.axesCamera.up = this.camera.up;
         
         this.cameraPostion = new THREE.Vector3();
         this.cameraDirection = new THREE.Vector3();
@@ -4407,9 +4422,16 @@ class App {
         pointLight.position.y = 0;
         pointLight.position.z = 0;
 
+        this.labelRenderer = new CSS2DRenderer();
+        this.labelRenderer.setSize(this.sizes.width, this.sizes.height);
+        this.labelRenderer.domElement.style.position = 'absolute';
+        this.labelRenderer.domElement.style.top = '0px';
+        document.body.appendChild(this.labelRenderer.domElement);
+
         // Init controls
-        this.controls = new OrbitControls(this.camera, canvas);
+        this.controls = new OrbitControls(this.camera, this.labelRenderer.domElement);
         this.controls.enableDamping = true;
+        this.controls.listenToKeyEvents(window);
         let thus = this;
 
         this.controls.addEventListener('change', ()=>{
@@ -4426,15 +4448,26 @@ class App {
         this.stats.begin();
         // Add things to scene
         this.scene.add(this.camera);
-        this.scene.add(new THREE.AxesHelper(20));
+        // this.scene.add(new THREE.AxesHelper(20));
+        this.axesScene.add(new THREE.AxesHelper());
         this.scene.add(pointLight);
         
         // Init renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: canvas,
+            alpha: true
         });
+        this.renderer.setClearColor(0x000000, 0.0);
         this.renderer.setSize(this.sizes.width, this.sizes.height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        this.axesRenderer = new THREE.WebGLRenderer({
+            alpha: true,
+        });
+        this.axesRenderer.setClearColor(0x000000, 0.0);
+        this.axesRenderer.setSize(this.AxesHelperSettings.canvas.width, this.AxesHelperSettings.canvas.height);
+        let axesContainer = document.getElementById('axesContainer');
+        axesContainer.appendChild( this.axesRenderer.domElement );
         
         this.tick();
         
@@ -4452,15 +4485,75 @@ class App {
         };
         this.loadbtn = this.gui.add(loaddataconf, "add").name("Load data");
         // this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
+        this.measurementSettings = {
+            ruler: {
+                enable: false,
+                clear: this.clearMeasurements.bind(this),
+            },
+            info: {
+                enable: false,
+                clear: this.clearMarkerInfo.bind(this),
+            },
+            markerColor: '#ffff00',
+            lineColor: '#0000ff',
+        }
+        this.measurement = this.gui.addFolder('Measurements');   
+
+        this.ruler = this.measurement.addFolder('Ruler');
+        this.ruler.add(this.measurementSettings.ruler, "enable", false).name("Enable"); 
+        this.ruler.add(this.measurementSettings.ruler, 'clear').name("Clear");
+        
+        this.infoMarker = this.measurement.addFolder('Info');
+        this.infoMarker.add(this.measurementSettings.info, "enable", false).name("Enable"); 
+        this.infoMarker.add(this.measurementSettings.info, 'clear').name("Clear");
+        
+        this.measurement.addColor(this.measurementSettings, 'markerColor').name('Marker Color').onChange(this.#markerColorChange.bind(this));
+        this.measurement.addColor(this.measurementSettings, 'lineColor').name('Line Color').onChange(this.#lineColorChange.bind(this));
         this.loaddGUI();
     }
+
+    #markerColorChange() {    
+        let selectedObjects = this.selectObjectsByNames('marker', 'marker-info');
+        selectedObjects.map(el => el.material.color.set(this.measurementSettings.markerColor));
+    }
+
+    #lineColorChange() {    
+        let selectedObjects = this.selectObjectsByNames('marker-line');
+        selectedObjects.map(el => el.material.color.set(this.measurementSettings.lineColor));
+    }
+
+    clearMeasurements() {
+        let selectedObjects = this.selectObjectsByNames('marker', 'marker-line');
+        selectedObjects.forEach(el => this.scene.remove(el));
+        document.querySelectorAll('.label.measurement').forEach(label => label.remove());
+        this.pickedPoints = [];
+    }
+
+    clearMarkerLine() {
+        let selectedObjects = this.selectObjectsByNames('marker-line');
+        selectedObjects.forEach(el => (el.clear(), this.scene.remove(el)));
+    }
+
+    clearMarkerInfo() {    
+        let selectedObjects = this.selectObjectsByNames('marker-info');
+        selectedObjects.forEach(el => this.scene.remove(el));
+        document.querySelectorAll('.label.info').forEach(label => label.remove());
+        this.pickedPointsInfo = [];
+    }
+
+    selectObjectsByNames(...names) {
+        let selectedObjects = [];
+        this.scene.traverse(el => {if (names.includes(el.name)) selectedObjects.push(el)})
+        return selectedObjects;
+    }
+
     loaddGUI() {
         for (let [type, obj] of Object.entries(this.objects)) {
             if (!obj.points || !obj.material) continue;
             this.toggleFolder.add(obj.points, "visible", true).name(obj.title);
             this.sizeFolder.add(obj.points.material, "size", 0, 1, 0.005).name(obj.title + " size");
             let conf = { color: obj.colorhex };
-            this.colorFolder.addColor(conf, "color").onChange(function (colorValue) {
+            this.colorFolder.addColor(conf, "color").name(obj.title).onChange(function (colorValue) {
                 obj.material.color.set(colorValue);
             });
         }
@@ -4472,8 +4565,14 @@ class App {
         // this.initRayCast();
         // Render
         this.renderer.render(this.scene, this.camera);
+        this.labelRenderer.render(this.scene, this.camera);
+        this.axesRenderer.render(this.axesScene, this.axesCamera);
         this.stats.update();
-
+        this.axesCamera.position.copy( this.camera.position );
+        this.axesCamera.position.sub( this.controls.target ); // added by @libe
+        this.axesCamera.position.setLength( 1 );
+    
+        this.axesCamera.lookAt( this.axesScene.position );
         // Call tick again on the next frame
         let rAF = this.tick.bind(this)
         window.requestAnimationFrame(rAF);
@@ -4494,34 +4593,131 @@ class App {
 
             // Update renderer
             this.renderer.setSize(this.sizes.width, this.sizes.height);
+            this.labelRenderer.setSize(this.sizes.width, this.sizes.height);
             this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         });
     }
-    initRayCast() {
-        let raycaster = new THREE.Raycaster();
-        let pointer = new THREE.Vector2();
-        let INTERSECTED;
-        raycaster.setFromCamera(pointer, this.camera);
-        for (let [type, obj] of Object.entries(this.objects)) {
-            let intersects = raycaster.intersectObject(obj.points);
-            let attributes = obj.geometry.attributes;
-            if ( intersects.length > 0 ) {
 
-                if ( INTERSECTED != intersects[ 0 ].index ) {
-                   attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-                    INTERSECTED = intersects[ 0 ].index;
-                   attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE * 1.25;
-                   attributes.size.needsUpdate = true;
-                }
+    #onMouseClick(event) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            } else if ( INTERSECTED !== null ) {
-               attributes.size.array[ INTERSECTED ] = PARTICLE_SIZE;
-               attributes.size.needsUpdate = true;
-                INTERSECTED = null;
+        if (event.ctrlKey && this.measurementSettings?.ruler?.enable)
+            this.#pickPoint();
 
-            }    
-        } 
+        if (event.ctrlKey && this.measurementSettings?.info?.enable)
+            this.#pickInfoMarker();
     }
+
+    #createSphere(position) {
+        const geometry = new THREE.SphereGeometry(0.1);
+        const material = new THREE.MeshBasicMaterial({
+            color: this.measurementSettings.markerColor,
+        });
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.copy(position);
+        sphere.name = 'marker';
+        return sphere;
+    }
+
+    #createLine(points) {
+        this.clearMarkerLine();
+        const material = new THREE.LineBasicMaterial({ 
+            color: this.measurementSettings.lineColor
+        });
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+        const line = new THREE.Line( geometry, material );
+
+        if (points.length >= 2) { 
+            points.forEach((point, index, arr) => {
+                if (index < arr.length - 1) {        
+                const lineMeasurementDiv = document.createElement('div');
+                lineMeasurementDiv.className = 'label measurement';
+                lineMeasurementDiv.textContent = `${points[index].distanceTo(points[index + 1]).toFixed(2)} m`;
+                lineMeasurementDiv.style.marginTop = '-1em';
+                const lineMeasurementLabel = new CSS2DObject(lineMeasurementDiv);
+                lineMeasurementLabel.position.copy(this.getLineCenter(points[index], points[index + 1]));
+                line.add(lineMeasurementLabel);
+                lineMeasurementLabel.layers.set(0);
+                }
+            })        
+        }
+
+        line.name = 'marker-line';
+
+        return line;
+    }
+
+    getLineCenter(start, end) {
+        return new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    }
+
+    #mean(x, y) {
+        return (x + y) / 2;
+    }
+
+    #getIntersectedObjectsFromEmitedRay() {
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        
+        let intersections = []
+        this.scene.children.filter(el => el.isPoints).forEach(points => {
+            const intersects = this.raycaster.intersectObject(points, true);
+
+            if (intersects.length) {
+                intersections.push(intersects[0]);
+            }    
+        });
+        intersections.sort((a, b) => a.distanceToRay - b.distanceToRay);
+
+        return intersections;
+    }
+
+    #pickInfoMarker() {
+        let intersections = this.#getIntersectedObjectsFromEmitedRay();
+
+        if (intersections.length) {
+            let intersecyedPoint = intersections[0].object.geometry.attributes.position;
+            let intersetedPointIndex = intersections[0].index;
+            this.pickedPointsInfo.push(new THREE.Vector3().fromBufferAttribute(intersecyedPoint, intersetedPointIndex));
+            this.scene.add(this.#createMarkerInfo(this.pickedPointsInfo.at(-1),  intersections[0].object.name));
+        }
+    }
+
+    #createMarkerInfo(point, type) {
+        let markerInfo = this.#createSphere(point);
+        markerInfo.name = 'marker-info';
+        const markerInfoDiv = document.createElement('div');
+        markerInfoDiv.className = 'label info';
+        markerInfoDiv.innerHTML = `(${point.x.toFixed(3)}, ${point.y.toFixed(3)}, ${point.z.toFixed(3)})</br>${type}`;
+        markerInfoDiv.style.marginTop = '-1em';
+        const markerInfoLabel = new CSS2DObject(markerInfoDiv);
+        markerInfoLabel.position.set(0, 0.1, 0);
+        markerInfo.add(markerInfoLabel);
+        markerInfoLabel.layers.set( 0 );
+        return markerInfo;
+    }
+
+    #pickPoint() {
+        let intersections = this.#getIntersectedObjectsFromEmitedRay();
+
+        if (intersections.length) {
+            let intersecyedPoint = intersections[0].object.geometry.attributes.position;
+            let intersetedPointIndex = intersections[0].index;
+            this.pickedPoints.push(new THREE.Vector3().fromBufferAttribute(intersecyedPoint, intersetedPointIndex));
+            this.scene.add(this.#createSphere(this.pickedPoints.at(-1)));
+            this.scene.add(this.#createLine(this.pickedPoints));
+        }
+        console.log(this.scene.children);
+    }
+
+    initRayCast() {
+        this.raycaster = new THREE.Raycaster();
+        this.raycaster.params.Points.threshold = 0.1;
+        this.mouse = new THREE.Vector2();
+        window.addEventListener('click', this.#onMouseClick.bind(this), false);
+    }
+
     initInfo(){
         let filename = document.getElementById("filename")
         let cameraX = document.getElementById("cameraX")
@@ -4626,6 +4822,7 @@ class App {
             obj.geometry.setAttribute("position", new THREE.Float32BufferAttribute(obj.positions, 3));
             obj.material = new THREE.PointsMaterial({ size: obj.size, name: obj.level,color: obj.color,});
             obj.points = new THREE.Points(obj.geometry, obj.material);
+            obj.points.name = obj.title;
             
             obj.geometry.rotateX(-1.5);
             // obj.geometry.translate(-1, -2, 11);
@@ -4687,6 +4884,6 @@ class App {
         return (sum / arr.length);
     }
 }
-let app = new App();
+window.app = new App();
 console.log(app)
 
