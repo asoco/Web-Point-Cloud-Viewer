@@ -1,3 +1,141 @@
-*{margin:0;padding:0}body,html{height:100vh;font-family:Poppins}.webgl{position:fixed;top:0;left:0;outline:0}div#dropzone{position:fixed;top:0;left:0;z-index:9999999999;width:100%;height:100%;background-color:rgba(0,0,0,.5);-webkit-transition:visibility 175ms,opacity 175ms;-o-transition:visibility 175ms,opacity 175ms;transition:visibility 175ms,opacity 175ms;display:table;text-shadow:1px 1px 2px #000;color:#fff;background:rgba(0,0,0,.45);font:bold 42px sans-serif}div#textnode{display:table-cell;text-align:center;vertical-align:middle;-webkit-transition:font-size 175ms;-o-transition:font-size 175ms;transition:font-size 175ms}.data_info{position:fixed;bottom:1em;left:50%;color:#fff;font-family:monospace;display:-webkit-box;display:-ms-flexbox;display:flex;background:rgba(0,0,0,.678);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);-webkit-transform:translateX(-50%);-ms-transform:translateX(-50%);transform:translateX(-50%);padding:1em;-ms-flex-wrap:wrap;flex-wrap:wrap}.data_info div{display:-webkit-box;display:-ms-flexbox;display:flex}.data_info div:not(:first-child) .title{margin-left:1em;display:block}.data_info .title{color:#c2c2c2}.data_info .value{margin-left:4px;font-weight:900;display:block}@media screen and (max-width:1100px){.data_info{-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column}.data_info div:not(:first-child) .title{margin-left:0;display:block}.data_info__block{-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column}}
+* {
+    margin: 0;
+    padding: 0
+}
+
+body,
+html {
+    height: 100vh;
+    font-family: Poppins;
+    /* background: linear-gradient(rgb(6, 2, 68) 0%, rgb(43, 39, 98) 100%); */
+    background: linear-gradient(124deg,#000108,#01020c,#02051d);
+    background-size: 180% 180%;
+    animation: gradient-animation 27s ease infinite;
+}
+
+  
+  @keyframes gradient-animation {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  #axesContainer {
+    position: fixed;
+    left: 0px;
+    bottom: 0px;
+  }
+
+.webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: 0
+}
+
+.label {
+    color: #FFF;
+    font-family: sans-serif;
+    padding: 5px;
+    background: rgb(0 0 0);
+    border-radius: 10px;
+    font-weight: bold;
+    text-align: center;
+}
+
+div#dropzone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999999999;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, .5);
+    -webkit-transition: visibility 175ms, opacity 175ms;
+    -o-transition: visibility 175ms, opacity 175ms;
+    transition: visibility 175ms, opacity 175ms;
+    display: table;
+    text-shadow: 1px 1px 2px #000;
+    color: #fff;
+    background: rgba(0, 0, 0, .45);
+    font: bold 42px sans-serif
+}
+
+div#textnode {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+    -webkit-transition: font-size 175ms;
+    -o-transition: font-size 175ms;
+    transition: font-size 175ms
+}
+
+.data_info {
+    position: fixed;
+    bottom: 1em;
+    left: 50%;
+    color: #fff;
+    font-family: monospace;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    background: rgba(0, 0, 0, .678);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    -webkit-transform: translateX(-50%);
+    -ms-transform: translateX(-50%);
+    transform: translateX(-50%);
+    padding: 1em;
+    -ms-flex-wrap: wrap;
+    flex-wrap: wrap
+}
+
+.data_info div {
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex
+}
+
+.data_info div:not(:first-child) .title {
+    margin-left: 1em;
+    display: block
+}
+
+.data_info .title {
+    color: #c2c2c2
+}
+
+.data_info .value {
+    margin-left: 4px;
+    font-weight: 900;
+    display: block
+}
+
+@media screen and (max-width:1100px) {
+    .data_info {
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+        -ms-flex-direction: column;
+        flex-direction: column
+    }
+
+    .data_info div:not(:first-child) .title {
+        margin-left: 0;
+        display: block
+    }
+
+    .data_info__block {
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+        -ms-flex-direction: column;
+        flex-direction: column
+    }
+}
 
 /*# sourceMappingURL=main.css.map*/
