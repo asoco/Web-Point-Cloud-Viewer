@@ -4358,6 +4358,7 @@ class App {
         this.scene = {};
         this.objects = {};
         this.pickedPoints = [];
+        this.pickedPointsClip = [];
         this.pickedPointsInfo = [];
         this.initInfo();
         this.init();
@@ -4457,6 +4458,7 @@ class App {
             canvas: canvas,
             alpha: true
         });
+        this.renderer.localClippingEnabled = true;
         this.renderer.setClearColor(0x000000, 0.0);
         this.renderer.setSize(this.sizes.width, this.sizes.height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -4509,7 +4511,47 @@ class App {
         
         this.measurement.addColor(this.measurementSettings, 'markerColor').name('Marker Color').onChange(this.#markerColorChange.bind(this));
         this.measurement.addColor(this.measurementSettings, 'lineColor').name('Line Color').onChange(this.#lineColorChange.bind(this));
+
+        this.clippingSettings = {
+            profile: {
+                enabled: false,
+                width: 1,
+                showHelpers: false,
+                clear: this.clearProfile.bind(this),
+            }
+        }
+
+        this.clipping = this.gui.addFolder('Clipping');
+        this.profile = this.clipping.addFolder('Profile');
+        this.profile.add(this.clippingSettings.profile, 'enabled').name("Enable");
+        this.profile.add(this.clippingSettings.profile, 'width', 0, 20/*TODO: Figure out how to compute max width for a scene */, 0.005).onChange(this.#clipProfileWidthChange.bind(this)).name("Width");
+        this.profile.add(this.clippingSettings.profile, 'showHelpers').onChange(function(showHelpers){
+            if(this.helpers) this.helpers.visible = showHelpers;
+        }.bind(this));
+        this.profile.add(this.clippingSettings.profile, 'clear').name("Clear");
+
         this.loaddGUI();
+    }
+
+    #clipProfileWidthChange() {
+        // this.clipPlanes.map(plane => {
+        //     plane.constant = this.linePlane.constant
+        // })
+
+        this.clipPlanes = [
+            this.linePlane.clone().set(this.linePlane.normal, this.linePlane.constant + this.clippingSettings.profile.width),                     
+            this.linePlane.clone().set(this.linePlane.normal, this.linePlane.constant - this.clippingSettings.profile.width).negate(),
+        ];
+
+        this.scene.children.filter(el => el.isPoints).forEach(points => {
+            points.material.clippingPlanes = this.clipPlanes;
+        })
+
+        this.helpers.children = [];
+        this.clipPlanes.forEach(el => {
+            this.helpers.add( new THREE.PlaneHelper( el, 2, 0xff0000 ) );
+        });
+        this.pickedPointsClip = [];
     }
 
     #markerColorChange() {    
@@ -4532,6 +4574,16 @@ class App {
     clearMarkerLine() {
         let selectedObjects = this.selectObjectsByNames('marker-line');
         selectedObjects.forEach(el => (el.clear(), this.scene.remove(el)));
+    }
+
+    clearProfile() {
+        let selectedObjects = this.selectObjectsByNames('clipper-line', 'clip-marker', 'clipper-planes-helper');
+        selectedObjects.forEach(el => (el.clear(), this.scene.remove(el)));
+        this.scene.children.filter(el => el.isPoints).forEach(points => {
+            points.material.clippingPlanes = [];
+        })
+
+        this.pickedPointsClip = [];
     }
 
     clearMarkerInfo() {    
@@ -4607,17 +4659,66 @@ class App {
 
         if (event.ctrlKey && this.measurementSettings?.info?.enable)
             this.#pickInfoMarker();
+
+        if(event.ctrlKey && this.clippingSettings?.profile?.enabled)
+            this.#pickClipMarker();
     }
 
-    #createSphere(position) {
+    #createSphere(position, name = 'marker') {
         const geometry = new THREE.SphereGeometry(0.1);
         const material = new THREE.MeshBasicMaterial({
             color: this.measurementSettings.markerColor,
         });
         const sphere = new THREE.Mesh(geometry, material);
         sphere.position.copy(position);
-        sphere.name = 'marker';
+        sphere.name = name;
         return sphere;
+    }
+
+    #createLineClipper(points) {
+        this.clipPlanes = [];
+        // this.clearMarkerLine();
+        const material = new THREE.LineBasicMaterial({ 
+            color: this.measurementSettings.lineColor,
+            // clippingPlanes: this.clipPlanes,
+            // clipIntersection: false,
+        });
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+        const line = new THREE.Line( geometry, material );
+
+        if (points.length === 2) { 
+            points.forEach((point, index, arr) => {            
+                if (index < arr.length - 1) {    
+                    this.linePlane = new THREE.Plane().setFromCoplanarPoints(
+                        points[index], 
+                        points[index + 1], 
+                        points[index].clone().setY(points[0].y + 1)
+                    );  
+                    this.clipPlanes = [
+                        ...this.clipPlanes,
+                        this.linePlane.clone().set(this.linePlane.normal, this.linePlane.constant + this.clippingSettings.profile.width),                     
+                        this.linePlane.clone().set(this.linePlane.normal, this.linePlane.constant - this.clippingSettings.profile.width).negate(),
+                    ];
+                }
+            })     
+            
+            this.helpers = new THREE.Group();
+            this.helpers.name = 'clipper-planes-helper'
+            this.clipPlanes.forEach(el => {
+                this.helpers.add( new THREE.PlaneHelper( el, 2, 0xff0000 ) );
+            })
+            this.helpers.visible = this.clippingSettings.profile.showHelpers;
+            this.scene.add( this.helpers );   
+            
+            this.scene.children.filter(el => el.isPoints).forEach(points => {
+                points.material.clippingPlanes = this.clipPlanes;
+            })
+        }
+
+        line.name = 'clipper-line';
+
+        return line;
     }
 
     #createLine(points) {
@@ -4698,13 +4799,27 @@ class App {
         return markerInfo;
     }
 
+    #pickClipMarker() {
+        let intersections = this.#getIntersectedObjectsFromEmitedRay();
+
+        //TODO: lear how to combine more than two clipping planes
+        if (intersections.length && this.pickedPointsClip.length < 2) {
+            let intersectedPoint = intersections[0].object.geometry.attributes.position;
+            let intersetedPointIndex = intersections[0].index;
+            this.pickedPointsClip.push(new THREE.Vector3().fromBufferAttribute(intersectedPoint, intersetedPointIndex));
+            this.scene.add(this.#createSphere(this.pickedPointsClip.at(-1), 'clip-marker'));
+            this.scene.add(this.#createLineClipper(this.pickedPointsClip));
+        }
+        console.log(this.scene.children);
+    }
+
     #pickPoint() {
         let intersections = this.#getIntersectedObjectsFromEmitedRay();
 
         if (intersections.length) {
-            let intersecyedPoint = intersections[0].object.geometry.attributes.position;
+            let intersectedPoint = intersections[0].object.geometry.attributes.position;
             let intersetedPointIndex = intersections[0].index;
-            this.pickedPoints.push(new THREE.Vector3().fromBufferAttribute(intersecyedPoint, intersetedPointIndex));
+            this.pickedPoints.push(new THREE.Vector3().fromBufferAttribute(intersectedPoint, intersetedPointIndex));
             this.scene.add(this.#createSphere(this.pickedPoints.at(-1)));
             this.scene.add(this.#createLine(this.pickedPoints));
         }
