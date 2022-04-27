@@ -7,6 +7,7 @@ import * as dat from 'dat.gui'
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Profile } from './js/profile.js';
 import { rawtext, Utils } from './js/utils.js';
+import { Navigation } from './js/navigation.js';
 
 class App {
     constructor() {
@@ -35,6 +36,7 @@ class App {
         this.initGUI();
         this.initProfile();
         this.initHoverPoint();
+        this.initNavigation();
     }
 
     initProfile() {
@@ -45,6 +47,13 @@ class App {
         this.pointHover = Utils.createSphere(new THREE.Vector3(), this.measurementSettings.markerColor, 'marker-hover');
         this.pointHover.visible = false;
         this.scene.add(this.pointHover);
+    }
+
+    initNavigation() {
+        if (!this.objects.ground.geometry.boundingSphere)
+            this.objects.ground.geometry.computeBoundingSphere();
+        this.nav = new Navigation(this.camera, 2 * this.objects.ground.geometry.boundingSphere.radius, this.gui);
+        this.nav.initGUI();
     }
 
     initSettings() {
@@ -136,6 +145,7 @@ class App {
 
         this.axesRenderer = new THREE.WebGLRenderer({
             alpha: true,
+            antialias: true,
         });
         this.axesRenderer.setClearColor(0x000000, 0.0);
         this.axesRenderer.setSize(this.AxesHelperSettings.canvas.width, this.AxesHelperSettings.canvas.height);
@@ -450,6 +460,7 @@ class App {
                     this.renderData();
                     this.initGUI();
                     this.initProfile();
+                    this.initNavigation();
                 });
                 reader.readAsText(file);
             });
@@ -506,7 +517,8 @@ class App {
                           if (thus.settings.resetSceneOnLoad) thus.resetScene();
                           thus.renderData();
                           thus.initGUI();
-                          thus.initProfile();
+                          thus.initProfile();                      
+                          thus.initNavigation();
                       });
                       reader.readAsText( e.dataTransfer.files[0]);    
                     }
