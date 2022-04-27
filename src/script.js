@@ -6,7 +6,7 @@ import Stats from 'stats.js/build/stats.min.js';
 import * as dat from 'dat.gui'
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Profile } from './js/profile.js';
-import { rawtext } from './js/utils.js';
+import { rawtext, Utils } from './js/utils.js';
 
 class App {
     constructor() {
@@ -34,10 +34,17 @@ class App {
         this.renderData();
         this.initGUI();
         this.initProfile();
+        this.initHoverPoint();
     }
 
     initProfile() {
-        this.profileClipper = new Profile(this.scene, this.renderer, this.raycaster, this.gui);
+        this.profileClipper = new Profile(this.scene, this.renderer, this.raycaster, this.gui, this.objects, this.sizes);
+    }
+
+    initHoverPoint() {
+        this.pointHover = Utils.createSphere(new THREE.Vector3(), this.measurementSettings.markerColor, 'marker-hover');
+        this.pointHover.visible = false;
+        this.scene.add(this.pointHover);
     }
 
     initSettings() {
@@ -123,7 +130,6 @@ class App {
             canvas: canvas,
             alpha: true
         });
-        this.renderer.localClippingEnabled = true;
         this.renderer.setClearColor(0x000000, 0.0);
         this.renderer.setSize(this.sizes.width, this.sizes.height);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -181,7 +187,7 @@ class App {
     }
 
     #markerColorChange() {    
-        let selectedObjects = this.selectObjectsByNames('marker', 'marker-info');
+        let selectedObjects = this.selectObjectsByNames('marker', 'marker-info', 'marker-hover');
         selectedObjects.map(el => el.material.color.set(this.measurementSettings.markerColor));
     }
 
@@ -229,6 +235,10 @@ class App {
     tick() {        
         // Update Orbital Controls
         this.controls.update();
+
+        if (this?.profileClipper?.controlsProfile){
+            this.profileClipper.tick();
+        }
         
         // this.initRayCast();
         // Render
@@ -278,6 +288,20 @@ class App {
 
         if(event.ctrlKey && this.profileClipper.clippingSettings.profile.enabled)
             this.profileClipper.pickClipMarker(this.measurementSettings.markerColor, this.measurementSettings.lineColor, this.mouse, this.camera);
+    }
+
+    #onMouseHover(event) {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        if (event.ctrlKey)
+            this.#highlightPoint();
+        else
+            this.#clearHovered();
+    }
+
+    #clearHovered() {
+        this.pointHover.visible = false;
     }
 
     #createSphere(position, name = 'marker') {
@@ -365,6 +389,19 @@ class App {
         return markerInfo;
     }
 
+    #highlightPoint() {
+        let intersections = this.#getIntersectedObjectsFromEmitedRay();
+
+        if (intersections.length) {
+            let intersectedPoint = intersections[0].object.geometry.attributes.position;
+            let intersetedPointIndex = intersections[0].index;
+            this.pointHover.position.copy(new THREE.Vector3().fromBufferAttribute(intersectedPoint, intersetedPointIndex));
+            this.pointHover.visible = true;
+        } else {
+            this.pointHover.visible = false;
+        }
+    }
+
     #pickPoint() {
         let intersections = this.#getIntersectedObjectsFromEmitedRay();
 
@@ -383,6 +420,7 @@ class App {
         this.raycaster.params.Points.threshold = 0.1;
         this.mouse = new THREE.Vector2();
         window.addEventListener('click', this.#onMouseClick.bind(this), false);
+        window.addEventListener('mousemove', this.#onMouseHover.bind(this), false);
     }
 
     initInfo(){

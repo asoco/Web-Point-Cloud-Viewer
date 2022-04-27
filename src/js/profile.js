@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { Utils } from './utils';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 export class Profile {
 
-    constructor(scene, renderer, raycaster, gui) {
+    constructor(scene, renderer, raycaster, gui, objects, sizes) {
         this.scene = scene;
         this.renderer = renderer;
         this.raycaster = raycaster;
@@ -14,6 +15,8 @@ export class Profile {
                 width: 1,
                 showHelpers: false,
                 clear: this.clearProfile.bind(this),
+                showWindow: this.generateNew2DWindow.bind(this),
+                enabledMainWindowClipping: false,
                 task: {
                     inside: {
                         enabled: true,
@@ -31,6 +34,10 @@ export class Profile {
             }
         };
         this.gui = gui;
+        this.objects = objects;
+        if (!this.objects.ground.geometry.boundingSphere)
+            this.objects.ground.geometry.computeBoundingSphere();
+        this.sizes = sizes;
         this.initGUI();
     }
 
@@ -38,10 +45,14 @@ export class Profile {
         this.clipping = this.gui.addFolder('Clipping');
         this.profile = this.clipping.addFolder('Profile');
         this.profile.add(this.clippingSettings.profile, 'enabled').name("Enable");
-        this.profile.add(this.clippingSettings.profile, 'width', 0, 20/*TODO: Figure out how to compute max width for a scene */, 0.005).onChange(this.clipProfileWidthChange.bind(this)).name("Width");
+        this.profile.add(this.clippingSettings.profile, 'enabledMainWindowClipping').name("Enable Global CLipping").onChange(function(enabled) {
+            this.renderer.localClippingEnabled = enabled;
+        }.bind(this));
+        this.profile.add(this.clippingSettings.profile, 'width', 0, 2 * this.objects.ground.geometry.boundingSphere.radius, 0.005).onChange(this.clipProfileWidthChange.bind(this)).name("Width");
         this.profile.add(this.clippingSettings.profile, 'showHelpers').onChange(function(showHelpers){
             if(this.helpers) this.helpers.visible = showHelpers;
         }.bind(this));
+        this.profile.add(this.clippingSettings.profile, 'showWindow').name('Open Window');
         this.profile.add(this.clippingSettings.profile, 'clear').name("Clear");
 
         this.clipTask = this.profile.addFolder('Clip Task');
@@ -102,6 +113,10 @@ export class Profile {
             this.scene.children.filter(el => el.isPoints).forEach(points => {
                 points.material.clippingPlanes = this.clipPlanes;
             })
+            if(this.clipPlanes?.length) {
+                this.controlsProfile.target.copy(this.linePlane.normal);
+                this.controlsProfile.update();
+            }
         }
 
         line.name = 'clipper-line';
@@ -165,7 +180,11 @@ export class Profile {
     }
 
     setInsideTask(wasPrevious) {
-        this.renderer.localClippingEnabled = true;
+        if (this.clippingSettings.profile.enabledMainWindowClipping)
+            this.renderer.localClippingEnabled = true;
+
+        if (this.rendererProfile)
+            this.rendererProfile.localClippingEnabled = true;
 
         if (!this.clipPlanes || wasPrevious)
             return;
@@ -177,7 +196,11 @@ export class Profile {
     }
 
     setOutsideTask(wasPrevious) {
-        this.renderer.localClippingEnabled = true;
+        if (this.clippingSettings.profile.enabledMainWindowClipping)
+            this.renderer.localClippingEnabled = true;
+
+        if (this.rendererProfile)
+            this.rendererProfile.localClippingEnabled = true;
 
         if (!this.clipPlanes || wasPrevious)
             return;
@@ -189,7 +212,11 @@ export class Profile {
     }
 
     setNoneTask(wasPrevious) {
-        this.renderer.localClippingEnabled = false;
+        if (this.clippingSettings.profile.enabledMainWindowClipping)
+            this.renderer.localClippingEnabled = false;
+
+        if (this.rendererProfile)
+            this.rendererProfile.localClippingEnabled = false;
     }
 
     clearProfile() {
@@ -201,5 +228,119 @@ export class Profile {
 
         this.pickedPointsClip = [];
         delete this.linePlane;
+    }
+
+    generateNew2DWindow() {
+
+        this.profileSize = {
+            width: this.sizes.width / 5 * 4,
+            height: this.sizes.height / 3,
+        }
+        let div = document.createElement('div');
+        div.style.position = 'absolute';
+        div.style.height = `${this.profileSize.height}px`;
+        div.style.width = `${this.profileSize.width}px`;
+        div.style.top = `${this.sizes.height - this.profileSize.height - 50}px`;
+
+        div.innerHTML = `
+            <div id="header" style="border-radius: 10px 10px 0 0;height: 30px;background: rgb(60, 80, 85);display: flex;justify-content: space-between;align-items: center;">
+                <span style="margin-left:10px;cursor:default;color: #ddd;text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;font-weight:bold;">Profile</span>
+                <span id="closeProfile" style="margin-right:10px;cursor:pointer;">❌</span>
+            </div>
+        `;
+
+        
+        let canvas = document.createElement('canvas');
+        canvas.id = '2dprofile';
+
+        div.append(canvas);
+
+        document.body.append(div);
+        this.dragElement(div);
+
+        this.sceneProfile = new THREE.Scene();
+
+        // this.initSizes();
+
+        // Init camera
+        let frustumSize = this.objects.ground.geometry.boundingSphere.radius * 2;
+        let aspect = 1;//this.profileSize.width / this.profileSize.height;
+        this.cameraProfile = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, -frustumSize, frustumSize);
+        
+        // Init renderer
+        this.rendererProfile = new THREE.WebGLRenderer({
+            canvas: canvas,
+            // antialias: true,
+        });
+        this.rendererProfile.localClippingEnabled = true;
+        this.rendererProfile.setClearColor(0x000000, 0.0);
+        this.rendererProfile.setSize(this.profileSize.width, this.profileSize.height);
+        this.rendererProfile.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        for (let [type, obj] of Object.entries(this.objects)) {
+            if (obj.points)
+                this.sceneProfile.add(obj.points.clone());
+        }
+
+        this.controlsProfile = new OrbitControls(this.cameraProfile, this.rendererProfile.domElement);
+
+        this.rendererProfile.render(this.sceneProfile, this.cameraProfile);
+    }
+
+    dragElement(elmnt) {
+        var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        if (elmnt.querySelector("#header")) {
+            /* if present, the header is where you move the DIV from:*/
+            elmnt.querySelector("#header").onmousedown = dragMouseDown;
+        } else {
+            /* otherwise, move the DIV from anywhere inside the DIV:*/
+            elmnt.onmousedown = dragMouseDown;
+        }
+
+        if (elmnt.querySelector('#closeProfile')) {
+            elmnt.querySelector('#closeProfile').onclick = closeDiv.bind(this);
+        }
+
+        function closeDiv(e) {
+            elmnt.remove();
+            this.sceneProfile = null;
+            this.cameraProfile = null;
+            this.rendererProfile = null;
+            this.controlsProfile = null;
+        }
+      
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // get the mouse cursor position at startup:
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            // call a function whenever the cursor moves:
+            document.onmousemove = elementDrag;
+        }
+      
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // calculate the new cursor position:
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            // set the element's new position:
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        }
+      
+        function closeDragElement() {
+            /* stop moving when mouse button is released:*/
+            document.onmouseup = null;
+            document.onmousemove = null;
+        }
+    }
+
+    tick() {
+        this.rendererProfile.render(this.sceneProfile, this.cameraProfile);
     }
 }
