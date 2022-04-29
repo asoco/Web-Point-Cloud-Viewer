@@ -8,6 +8,9 @@ import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRe
 import { Profile } from './js/profile.js';
 import { rawtext, Utils } from './js/utils.js';
 import { Navigation } from './js/navigation.js';
+import { CustomShaderMaterial, TYPES } from './js/customShader';
+import { vShader } from './shader/vertex';
+import { fShader } from './shader/fragment';
 
 class App {
     constructor() {
@@ -21,6 +24,12 @@ class App {
         this.pickedPointsClip = [];
         this.pickedPointsInfo = [];
         this.initInfo();
+        this.gradient = {
+            enableGradient: false,
+            color1: '#0000ff',
+            color2: '#ffff00',        
+            color3: '#ff0000',
+        };
         this.init();
 
     }
@@ -40,7 +49,8 @@ class App {
     }
 
     initProfile() {
-        this.profileClipper = new Profile(this.scene, this.renderer, this.raycaster, this.gui, this.objects, this.sizes);
+        let range = Math.abs(this.maxY - this.minY);
+        this.profileClipper = new Profile(this.scene, this.renderer, this.raycaster, this.gui, this.objects, range, this.sizes);
     }
 
     initHoverPoint() {
@@ -50,9 +60,8 @@ class App {
     }
 
     initNavigation() {
-        if (!this.objects.ground.geometry.boundingSphere)
-            this.objects.ground.geometry.computeBoundingSphere();
-        this.nav = new Navigation(this.camera, 2 * this.objects.ground.geometry.boundingSphere.radius, this.gui);
+        let range = Math.abs(this.maxY - this.minY);
+        this.nav = new Navigation(this.camera, 2 * range, this.gui);
         this.nav.initGUI();
     }
 
@@ -241,7 +250,34 @@ class App {
                 obj.material.color.set(colorValue);
             });
         }
+        this.gradientFolrder = this.colorFolder.addFolder('Gradient');
+        this.gradientFolrder.add(this.gradient, 'enableGradient')
+            .name("Enable")
+            .listen()
+            .onChange(function (enabled) {
+                for (let [type, obj] of Object.entries(this.objects)) {
+                    if (!obj.points || !obj.material) continue;
+                    obj.material.uniforms.enableGradient.value = enabled;
+                }
+            }.bind(this));
+        this.gradientFolrder.addColor(this.gradient, 'color1')
+            .listen()
+            .onChange(this.gradientColorChange.bind(this, 'color1'));
+        this.gradientFolrder.addColor(this.gradient, 'color2')
+            .listen()
+            .onChange(this.gradientColorChange.bind(this, 'color2'));
+        this.gradientFolrder.addColor(this.gradient, 'color3')
+            .listen()
+            .onChange(this.gradientColorChange.bind(this, 'color3'));
     }
+
+    gradientColorChange(prop, colorValue) {
+        for (let [type, obj] of Object.entries(this.objects)) {
+            if (!obj.points || !obj.material) continue;
+            obj.material.uniforms[prop].value.set(colorValue);
+        }
+    }
+
     tick() {        
         // Update Orbital Controls
         this.controls.update();
@@ -539,7 +575,39 @@ class App {
 
             obj.geometry = new THREE.BufferGeometry();
             obj.geometry.setAttribute("position", new THREE.Float32BufferAttribute(obj.positions, 3));
-            obj.material = new THREE.PointsMaterial({ size: obj.size, name: obj.level,color: obj.color,});
+            // obj.material = new THREE.PointsMaterial({ size: obj.size, name: obj.level,color: obj.color,});
+            obj.material = new CustomShaderMaterial({
+                baseMaterial: TYPES.POINTS,
+                // Our Custom vertex shader
+                vShader: vShader,
+                fShader: fShader,
+                uniforms: {
+                    color1: {
+                        value: new THREE.Color(this.gradient.color1),
+                    },
+                    color2: {
+                        value: new THREE.Color(this.gradient.color2),
+                    },
+                    color3: {
+                        value: new THREE.Color(this.gradient.color3),
+                    },
+                    bboxMin: {
+                        value: this.minZ,
+                    },
+                    bboxMax: {
+                        value: this.maxZ,
+                    },
+                    enableGradient: {
+                        value: this.gradient.enableGradient,
+                    },
+                    color: {
+                        value: new THREE.Color(obj.color),
+                    }
+                },
+                passthrough: {
+                    size: obj.size,
+                },
+            })
             obj.points = new THREE.Points(obj.geometry, obj.material);
             obj.points.name = obj.title;
             
@@ -588,13 +656,45 @@ class App {
         meanX = this.arrAvg(x);
         meanY = this.arrAvg(y);
         meanZ = this.arrAvg(z);
+        x=[];y=[];z=[];
         for (let i = 0; i < this.data.length; i++){
             this.data[i][1] = this.data[i][1] - meanX // красный
             this.data[i][2] = this.data[i][2] - meanY // + синий -
             this.data[i][3] = this.data[i][3] - meanZ // зеленый
+            if (this.data[i][0] != 7) {
+                x.push(this.data[i][1]);
+                y.push(this.data[i][2]);
+                z.push(this.data[i][3]);
+            }
         }
-
+        this.minX = this.arrayMin(x);
+        this.maxX = this.arrayMax(x);
+        this.minY = this.arrayMin(y);
+        this.maxY = this.arrayMax(y);
+        this.minZ = this.arrayMin(z);
+        this.maxZ = this.arrayMax(z);
     } 
+
+    arrayMin(arr) {
+        var len = arr.length, min = Infinity;
+        while (len--) {
+            if (arr[len] < min) {
+                min = arr[len];
+            }
+        }
+        return min;
+    }
+      
+    arrayMax(arr) {
+        var len = arr.length, max = -Infinity;
+        while (len--) {
+            if (arr[len] > max) {
+                max = arr[len];
+            }
+        }
+        return max;
+    }
+
     arrAvg(arr){
         for(let i = 0; i<arr.length;i++){
                 arr[i] = parseFloat(arr[i])
@@ -605,4 +705,3 @@ class App {
 }
 window.app = new App();
 console.log(app)
-

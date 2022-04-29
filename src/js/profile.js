@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 export class Profile {
 
-    constructor(scene, renderer, raycaster, gui, objects, sizes) {
+    constructor(scene, renderer, raycaster, gui, objects, range, sizes) {
         this.scene = scene;
         this.renderer = renderer;
         this.raycaster = raycaster;
@@ -35,8 +35,9 @@ export class Profile {
         };
         this.gui = gui;
         this.objects = objects;
-        if (!this.objects.ground.geometry.boundingSphere)
-            this.objects.ground.geometry.computeBoundingSphere();
+        this.range = range;
+        // if (!this.objects.ground.geometry.boundingSphere)
+        //     this.objects.ground.geometry.computeBoundingSphere();
         this.sizes = sizes;
         this.initGUI();
     }
@@ -48,7 +49,7 @@ export class Profile {
         this.profile.add(this.clippingSettings.profile, 'enabledMainWindowClipping').name("Enable Global CLipping").onChange(function(enabled) {
             this.renderer.localClippingEnabled = enabled;
         }.bind(this));
-        this.profile.add(this.clippingSettings.profile, 'width', 0, 2 * this.objects.ground.geometry.boundingSphere.radius, 0.005).onChange(this.clipProfileWidthChange.bind(this)).name("Width");
+        this.profile.add(this.clippingSettings.profile, 'width', 0, 2 * this.range, 0.005).onChange(this.clipProfileWidthChange.bind(this)).name("Width");
         this.profile.add(this.clippingSettings.profile, 'showHelpers').onChange(function(showHelpers){
             if(this.helpers) this.helpers.visible = showHelpers;
         }.bind(this));
@@ -114,8 +115,10 @@ export class Profile {
                 points.material.clippingPlanes = this.clipPlanes;
             })
             if(this.clipPlanes?.length) {
-                this.controlsProfile.target.copy(this.linePlane.normal);
-                this.controlsProfile.update();
+                if (this.controlsProfile) {
+                    this.controlsProfile.target.copy(this.linePlane.normal);
+                    this.controlsProfile.update();
+                }
             }
         }
 
@@ -263,7 +266,7 @@ export class Profile {
         // this.initSizes();
 
         // Init camera
-        let frustumSize = this.objects.ground.geometry.boundingSphere.radius * 2;
+        let frustumSize = this.range * 2;
         let aspect = 1;//this.profileSize.width / this.profileSize.height;
         this.cameraProfile = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, -frustumSize, frustumSize);
         
