@@ -83,7 +83,7 @@ export class Profile {
                     this.linePlane = new THREE.Plane().setFromCoplanarPoints(
                         points[index], 
                         points[index + 1], 
-                        points[index].clone().setY(points[0].y + 1)
+                        points[index].clone().setZ(points[0].z + 1)
                     );  
                     this.clipPlanes = [
                         ...this.clipPlanes,
@@ -269,7 +269,8 @@ export class Profile {
         let frustumSize = this.range * 2;
         let aspect = 1;//this.profileSize.width / this.profileSize.height;
         this.cameraProfile = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, -frustumSize, frustumSize);
-        
+        // this.cameraProfile.position.set(1, 0, 0);
+        this.cameraProfile.up.set(0, 0, 1);
         // Init renderer
         this.rendererProfile = new THREE.WebGLRenderer({
             canvas: canvas,
@@ -286,6 +287,8 @@ export class Profile {
         }
 
         this.controlsProfile = new OrbitControls(this.cameraProfile, this.rendererProfile.domElement);
+        this.controlsProfile.target.set(1, 0, 0);
+        this.controlsProfile.update();
 
         this.rendererProfile.render(this.sceneProfile, this.cameraProfile);
         

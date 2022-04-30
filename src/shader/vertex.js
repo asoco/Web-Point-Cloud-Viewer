@@ -6,7 +6,7 @@ export const vShader = {
         uniform float bboxMax;
     `,
     main: `
-        vUv.y = (position.y - bboxMin) / (bboxMax - bboxMin);
+        vUv.y = (position.z - bboxMin) / (bboxMax - bboxMin);
         vec3 newPos = position;
     `,
 }

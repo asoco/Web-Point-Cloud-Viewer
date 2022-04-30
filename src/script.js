@@ -61,7 +61,7 @@ class App {
 
     initNavigation() {
         let range = Math.abs(this.maxY - this.minY);
-        this.nav = new Navigation(this.camera, 2 * range, this.gui);
+        this.nav = new Navigation(this.camera, this.controls, 2 * range, this.gui);
         this.nav.initGUI();
     }
 
@@ -97,9 +97,8 @@ class App {
 
         // Init camera
         this.camera = new THREE.PerspectiveCamera(75, this.sizes.width / this.sizes.height, 0.1, 10000);
-        this.camera.position.x = 20;
-        this.camera.position.y = 0;
-        this.camera.position.z = 20;
+        this.camera.position.set(20, 20, 0);
+        this.camera.up.set(0,0,1);
 
         this.axesCamera = new THREE.PerspectiveCamera(75, this.AxesHelperSettings.canvas.width / this.AxesHelperSettings.canvas.height, 0.1, 10000);
         this.axesCamera.up = this.camera.up;
@@ -426,7 +425,9 @@ class App {
         markerInfo.name = 'marker-info';
         const markerInfoDiv = document.createElement('div');
         markerInfoDiv.className = 'label info';
-        markerInfoDiv.innerHTML = `(${point.x.toFixed(3)}, ${point.y.toFixed(3)}, ${point.z.toFixed(3)})</br>${type}`;
+        let realPoint = new THREE.Vector3().addVectors(point, this.centerPoint);
+        console.log(realPoint);
+        markerInfoDiv.innerHTML = `(${realPoint.x.toFixed(3)}, ${realPoint.y.toFixed(3)}, ${realPoint.z.toFixed(3)})</br>${type}`;
         markerInfoDiv.style.marginTop = '-1em';
         const markerInfoLabel = new CSS2DObject(markerInfoDiv);
         markerInfoLabel.position.set(0, 0.1, 0);
@@ -614,7 +615,7 @@ class App {
             obj.points = new THREE.Points(obj.geometry, obj.material);
             obj.points.name = obj.title;
             
-            obj.geometry.rotateX(-1.5);
+            // obj.geometry.rotateX(-1.5);
             // obj.geometry.translate(-1, -2, 11);
 
             this.scene.add(obj.points);
@@ -650,7 +651,7 @@ class App {
         let z = [];
         for (let i = 0; i < this.data.length; i++){
             let item = this.data[i]
-            if(item[0]>2 && item[0]<6) continue;
+            if(item[0]<2 && item[0]>6) continue;
             x.push(item[1]);
             y.push(item[2]);
             z.push(item[3]);
@@ -659,6 +660,7 @@ class App {
         meanX = this.arrAvg(x);
         meanY = this.arrAvg(y);
         meanZ = this.arrAvg(z);
+        this.centerPoint = new THREE.Vector3(meanX, meanY, meanZ); 
         x=[];y=[];z=[];
         for (let i = 0; i < this.data.length; i++){
             this.data[i][1] = this.data[i][1] - meanX // красный
