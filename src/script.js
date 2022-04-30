@@ -247,7 +247,7 @@ class App {
             this.sizeFolder.add(obj.points.material, "size", 0, 1, 0.005).name(obj.title + " size");
             let conf = { color: obj.colorhex };
             this.colorFolder.addColor(conf, "color").name(obj.title).onChange(function (colorValue) {
-                obj.material.color.set(colorValue);
+                obj.material.uniforms.color.value.set(colorValue);
             });
         }
         this.gradientFolrder = this.colorFolder.addFolder('Gradient');
@@ -566,7 +566,10 @@ class App {
             const raw = this.data.filter((item) => {
                 return item[0] === obj.level;
             });
-            if (raw.length === 0) continue;
+            if (raw.length === 0) {
+                obj.points = undefined;
+                continue;
+            }
 
             const dataBuffer = [];
             for (let i = 1; i < raw.length; i++) dataBuffer.push(raw[i][1], raw[i][2], raw[i][3]);

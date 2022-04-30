@@ -288,6 +288,13 @@ export class Profile {
         this.controlsProfile = new OrbitControls(this.cameraProfile, this.rendererProfile.domElement);
 
         this.rendererProfile.render(this.sceneProfile, this.cameraProfile);
+        
+        if(this.clipPlanes?.length) {
+            if (this.controlsProfile) {
+                this.controlsProfile.target.copy(this.linePlane.normal);
+                this.controlsProfile.update();
+            }
+        }
     }
 
     dragElement(elmnt) {
