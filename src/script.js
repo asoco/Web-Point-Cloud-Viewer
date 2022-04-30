@@ -247,7 +247,7 @@ class App {
             this.sizeFolder.add(obj.points.material, "size", 0, 1, 0.005).name(obj.title + " size");
             let conf = { color: obj.colorhex };
             this.colorFolder.addColor(conf, "color").name(obj.title).onChange(function (colorValue) {
-                obj.material.color.set(colorValue);
+                obj.material.uniforms.color.value.set(colorValue);
             });
         }
         this.gradientFolrder = this.colorFolder.addFolder('Gradient');
@@ -329,7 +329,7 @@ class App {
         if (event.ctrlKey && this.measurementSettings?.ruler?.enable)
             this.#pickPoint();
 
-        if (event.ctrlKey && this.measurementSettings?.info?.enable)
+        if (this.measurementSettings?.info?.enable)
             this.#pickInfoMarker();
 
         if(event.ctrlKey && this.profileClipper.clippingSettings.profile.enabled)
@@ -416,6 +416,7 @@ class App {
         if (intersections.length) {
             let intersecyedPoint = intersections[0].object.geometry.attributes.position;
             let intersetedPointIndex = intersections[0].index;
+            console.log(new THREE.Vector3().fromBufferAttribute(intersecyedPoint, intersetedPointIndex));
             this.pickedPointsInfo.push(new THREE.Vector3().fromBufferAttribute(intersecyedPoint, intersetedPointIndex));
             this.scene.add(this.#createMarkerInfo(this.pickedPointsInfo.at(-1),  intersections[0].object.name));
         }
@@ -426,7 +427,12 @@ class App {
         markerInfo.name = 'marker-info';
         const markerInfoDiv = document.createElement('div');
         markerInfoDiv.className = 'label info';
-        markerInfoDiv.innerHTML = `(${point.x.toFixed(3)}, ${point.y.toFixed(3)}, ${point.z.toFixed(3)})</br>${type}`;
+        // let pointDecentralized = new THREE.Vector3().addVectors(point, this.centerPoint);
+        // console.log(this.centerPoint, point);
+        let pp = point.clone();
+        // pp.applyAxisAngle(this.centerPoint, 1.5);
+        console.log(pp,this.centerPoint);
+        markerInfoDiv.innerHTML = `(${(point.x + this.centerPoint.x).toFixed(3)}, ${(point.y + this.centerPoint.y).toFixed(3)}, ${(point.z + this.centerPoint.z).toFixed(3)})</br>${type}`;
         markerInfoDiv.style.marginTop = '-1em';
         const markerInfoLabel = new CSS2DObject(markerInfoDiv);
         markerInfoLabel.position.set(0, 0.1, 0);
@@ -566,7 +572,10 @@ class App {
             const raw = this.data.filter((item) => {
                 return item[0] === obj.level;
             });
-            if (raw.length === 0) continue;
+            if (raw.length === 0) {
+                obj.points = undefined;
+                continue
+            };
 
             const dataBuffer = [];
             for (let i = 1; i < raw.length; i++) dataBuffer.push(raw[i][1], raw[i][2], raw[i][3]);
@@ -640,14 +649,14 @@ class App {
             for(let j = 0; j < this.data[i].length;j++)
                 if (!this.data[j]|| Number.isNaN(this.data[j]))
                     this.data.splice(i, 1);
-            }
+        }
         let meanX = 0,meanY = 0, meanZ = 0;
         let x = [];
         let y = [];
         let z = [];
         for (let i = 0; i < this.data.length; i++){
             let item = this.data[i]
-            if(item[0]>2 && item[0]<6) continue;
+            if(item[0]<2 && item[0]>6) continue;
             x.push(item[1]);
             y.push(item[2]);
             z.push(item[3]);
@@ -656,6 +665,7 @@ class App {
         meanX = this.arrAvg(x);
         meanY = this.arrAvg(y);
         meanZ = this.arrAvg(z);
+        this.centerPoint = new THREE.Vector3(meanX, meanY, meanZ);
         x=[];y=[];z=[];
         for (let i = 0; i < this.data.length; i++){
             this.data[i][1] = this.data[i][1] - meanX // красный
