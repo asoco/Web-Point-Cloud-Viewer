@@ -11,6 +11,7 @@ import { Navigation } from './js/navigation.js';
 import { CustomShaderMaterial, TYPES } from './js/customShader';
 import { vShader } from './shader/vertex';
 import { fShader } from './shader/fragment';
+import { Gradients, getGradient, getGradientNames } from './js/gradient'
 
 class App {
     constructor() {
@@ -26,10 +27,9 @@ class App {
         this.initInfo();
         this.gradient = {
             enableGradient: false,
-            color1: '#0000ff',
-            color2: '#ffff00',        
-            color3: '#ff0000',
         };
+        this.gradientNames = getGradientNames();
+        [this.gradientColors, this.gradientBounds] = getGradient(Gradients.RAINBOW);
         this.init();
 
     }
@@ -145,7 +145,8 @@ class App {
         // Init renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: canvas,
-            alpha: true
+            alpha: true,
+            powerPreference: "high-performance", 
         });
         this.renderer.setClearColor(0x000000, 0.0);
         this.renderer.setSize(this.sizes.width, this.sizes.height);
@@ -259,15 +260,23 @@ class App {
                     obj.material.uniforms.enableGradient.value = enabled;
                 }
             }.bind(this));
-        this.gradientFolrder.addColor(this.gradient, 'color1')
-            .listen()
-            .onChange(this.gradientColorChange.bind(this, 'color1'));
-        this.gradientFolrder.addColor(this.gradient, 'color2')
-            .listen()
-            .onChange(this.gradientColorChange.bind(this, 'color2'));
-        this.gradientFolrder.addColor(this.gradient, 'color3')
-            .listen()
-            .onChange(this.gradientColorChange.bind(this, 'color3'));
+        this.gradientNames.forEach(function (el) {
+            let conf = {color: this.setGradient.bind(this, el)};
+            this.gradientFolrder.add(conf, 'color').name(el);
+        }.bind(this))
+        // this.gradientFolrder.add()
+    }
+
+    setGradient(color) {
+        for (let [type, obj] of Object.entries(this.objects)) {
+            if (!obj.points || !obj.material) continue;
+            [this.gradientColors, this.gradientBounds] = getGradient(Gradients[color]);
+            if (obj.material.uniforms?.colors) {
+                obj.material.uniforms.len.value = this.gradientBounds.length;
+                obj.material.uniforms.colors.value = this.gradientColors;
+                obj.material.uniforms.bounds.value = this.gradientBounds;
+            }
+        }
     }
 
     gradientColorChange(prop, colorValue) {
@@ -586,15 +595,15 @@ class App {
                 vShader: vShader,
                 fShader: fShader,
                 uniforms: {
-                    color1: {
-                        value: new THREE.Color(this.gradient.color1),
+                    colors: {
+                        value: this.gradientColors,
                     },
-                    color2: {
-                        value: new THREE.Color(this.gradient.color2),
+                    bounds: {
+                        value: this.gradientBounds,
                     },
-                    color3: {
-                        value: new THREE.Color(this.gradient.color3),
-                    },
+                    len: {
+                        value: this.gradientColors.length,
+                    },                
                     bboxMin: {
                         value: this.minZ,
                     },
