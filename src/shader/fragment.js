@@ -8,12 +8,19 @@ export const fShader = {
         uniform vec3 color4;
         uniform bool enableGradient;
         uniform vec3 color;
+        uniform bool circle;
         float remap( float minval, float maxval, float curval )
         {
             return ( curval - minval ) / ( maxval - minval );
         } 
     `,
     main: `
+        if (circle) {
+            float distanceFromCenter = length(2.0 * gl_PointCoord - 1.0);
+            if(distanceFromCenter > 1.0) {
+                discard;
+            }
+        }
         vec4 newColor;
         if (enableGradient == true) {
             //vec3 tmp = vec3(mix(color1, color2, vUv.y));
