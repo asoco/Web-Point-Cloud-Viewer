@@ -167,6 +167,21 @@ class App {
     initGUI() {
         if (this.gui) this.gui.destroy();
         this.gui = new dat.GUI();
+
+        this.appearence = {
+            pointType: {
+                circle: false,
+            }
+        }
+
+        this.appearenceFolder = this.gui.addFolder("Appearence");
+        this.appearenceFolder.add(this.appearence.pointType, 'circle').onChange(function (enabled) {
+            for (let [type, obj] of Object.entries(this.objects)) {
+                if (!obj.points || !obj.material) continue;
+                obj.material.uniforms.circle.value = enabled;
+            }
+        }.bind(this))
+
         this.toggleFolder = this.gui.addFolder("Visibility");
         this.sizeFolder = this.gui.addFolder("Size");
         this.colorFolder = this.gui.addFolder("Color scheme");
@@ -615,6 +630,9 @@ class App {
                     },
                     color: {
                         value: new THREE.Color(obj.color),
+                    },
+                    circle: {
+                        value: false,
                     }
                 },
                 passthrough: {
@@ -641,9 +659,16 @@ class App {
     parseData(text) {
         let tmp = text.split("\n");
         this.data = [];
-        this.data = tmp.map((item) => {
-            return item.split(" ");
-        });
+        this.data = tmp.reduce((result, item) => {
+            item = item.trim().replaceAll(',', '');
+            if (item.charAt(0)!=="#" && item !=="") {
+                let line = item.split(/\s+/);
+                if (line.length === 3)
+                    line.unshift(this.objects.unclassified.level);
+                result.push(line);
+            }
+            return result;
+        }, []);
         this.data = this.data.filter(i=>{return i.length > 1 })
         if(this.settings.resetSceneOnLoad) this.calcCenter();
     }
