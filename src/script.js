@@ -608,7 +608,7 @@ class App {
                 baseMaterial: TYPES.POINTS,
                 // Our Custom vertex shader
                 vShader: vShader,
-                fShader: fShader,
+                fShader: fShader(this.gradientColors.length),
                 uniforms: {
                     colors: {
                         value: this.gradientColors,

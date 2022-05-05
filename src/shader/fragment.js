@@ -1,11 +1,11 @@
-export const fShader = {
-    defines: " ",
+export const fShader = (length) => {return {
+    defines: "#define GR_LENGTH " + length,
     header: `
         varying vec2 vUv;
         uniform bool enableGradient;
         uniform vec3 color;
-        uniform vec3[17] colors;
-        uniform float[17] bounds;
+        uniform vec3[GR_LENGTH] colors;
+        uniform float[GR_LENGTH] bounds;
         uniform int len;
         uniform bool circle;
         float remap( float minval, float maxval, float curval )
@@ -25,7 +25,7 @@ export const fShader = {
             //vec3 tmp = vec3(mix(color1, color2, vUv.y));
             float u = vUv.y;
             u = clamp(u, 0.0, 1.0);
-            for (int i = 0; i < len - 1; i++) {
+            for (int i = 0; i < GR_LENGTH - 1; i++) {
                 if (u > bounds[i] && u < bounds[i+1])
                     newColor = vec4(mix(colors[i], colors[i+1], remap(bounds[i], bounds[i+1], u)), 1.0);
             }
@@ -33,4 +33,4 @@ export const fShader = {
         else
            newColor = vec4(color, 1.0);   
     `,
-}
+}}
