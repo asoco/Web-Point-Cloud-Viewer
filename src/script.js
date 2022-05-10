@@ -12,6 +12,10 @@ import { CustomShaderMaterial, TYPES } from './js/customShader';
 import { vShader } from './shader/vertex';
 import { fShader } from './shader/fragment';
 import { Gradients, getGradient, getGradientNames } from './js/gradient'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
+import { Line2 } from 'three/examples/jsm/lines/Line2';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry'
+import {cancellableLoad, getBinaryLocal} from './js/loadLasFile'
 
 class App {
     constructor() {
@@ -185,6 +189,18 @@ class App {
         this.toggleFolder = this.gui.addFolder("Visibility");
         this.sizeFolder = this.gui.addFolder("Size");
         this.colorFolder = this.gui.addFolder("Color scheme");
+        if (!this.colorConfig)
+            this.colorConfig = { option: "classification", value: 1};
+        this.colorFolder.add(this.colorConfig, 'option', ['classification', 'rgb']).onChange(function(event) {        
+            this.colorConfig.value = event === 'classification' ? 1 : 2;
+            for (let [type, obj] of Object.entries(this.objects)) {
+                if (!obj.points || !obj.material) continue;
+                if (event === 'rgb')
+                    obj.material.uniforms.type.value = 2
+                else
+                    obj.material.uniforms.type.value = 1
+            }
+        }.bind(this));
         let loaddataconf = {
             add: function () {
                 document.getElementById("file-input").click();
@@ -262,7 +278,7 @@ class App {
             this.sizeFolder.add(obj.points.material, "size", 0, 1, 0.005).name(obj.title + " size");
             let conf = { color: obj.colorhex };
             this.colorFolder.addColor(conf, "color").name(obj.title).onChange(function (colorValue) {
-                obj.material.uniforms.color.value.set(colorValue);
+                obj.material.uniforms.colorBase.value.set(colorValue);
             });
         }
         this.gradientFolrder = this.colorFolder.addFolder('Gradient');
@@ -277,7 +293,8 @@ class App {
             }.bind(this));
         this.gradientNames.forEach(function (el) {
             let conf = {color: this.setGradient.bind(this, el)};
-            this.gradientFolrder.add(conf, 'color').name(el);
+            this.gradientFolrder.add(conf, 'color').name(el)
+                .domElement.parentElement.parentElement.classList.add(el);
         }.bind(this))
         // this.gradientFolrder.add()
     }
@@ -286,9 +303,9 @@ class App {
         for (let [type, obj] of Object.entries(this.objects)) {
             if (!obj.points || !obj.material) continue;
             [this.gradientColors, this.gradientBounds] = getGradient(Gradients[color]);
-            if (obj.material.uniforms?.colors) {
+            if (obj.material.uniforms?.colorsGradient) {
                 obj.material.uniforms.len.value = this.gradientBounds.length;
-                obj.material.uniforms.colors.value = this.gradientColors;
+                obj.material.uniforms.colorsGradient.value = this.gradientColors;
                 obj.material.uniforms.bounds.value = this.gradientBounds;
             }
         }
@@ -386,12 +403,20 @@ class App {
 
     #createLine(points) {
         this.clearMarkerLine();
-        const material = new THREE.LineBasicMaterial({ 
-            color: this.measurementSettings.lineColor
+        const material = new LineMaterial({ 
+            color: this.measurementSettings.lineColor,
+            alphaToCoverage: true,
+            linewidth: 3,
         });
-        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const geometry = new LineGeometry();
+        let positions = [];
+        points.forEach(point => positions.push(point.x, point.y, point.z));
+        geometry.setPositions(positions);
+        material.resolution.set(this.sizes.width, this.sizes.height );
 
-        const line = new THREE.Line( geometry, material );
+        const line = new Line2( geometry, material );
+        line.computeLineDistances();
+        line.scale.set( 1, 1, 1 );
 
         if (points.length >= 2) { 
             points.forEach((point, index, arr) => {
@@ -523,7 +548,11 @@ class App {
                     this.initProfile();
                     this.initNavigation();
                 });
-                reader.readAsText(file);
+                let ext = file.name.split('.').pop();
+                if (ext === 'laz' ||ext === 'las')
+                    cancellableLoad(getBinaryLocal, [file], file.name);
+                else
+                    reader.readAsText(file);
             });
         }
     }
@@ -581,7 +610,11 @@ class App {
                           thus.initProfile();                      
                           thus.initNavigation();
                       });
-                      reader.readAsText( e.dataTransfer.files[0]);    
+                      let ext = e.dataTransfer.files[0].name.split('.').pop();
+                      if (ext === 'laz' || ext === 'las')
+                          cancellableLoad(getBinaryLocal, [e.dataTransfer.files[0]], e.dataTransfer.files[0].name);
+                      else
+                          reader.readAsText(e.dataTransfer.files[0]);
                     }
                 });  
             
@@ -597,12 +630,35 @@ class App {
             }
 
             const dataBuffer = [];
-            for (let i = 1; i < raw.length; i++) dataBuffer.push(raw[i][1], raw[i][2], raw[i][3]);
+            const color = [];
+            let type;
+            if (raw[0].length === 4) {
+                type = 1;
+            } else if (raw[0].length === 7) {
+                type = 2;
+            } else if (raw[0].length === 8) {
+                type = 3;
+            }
+
+            for (let i = 1; i < raw.length; i++) {
+                if (type === 1)
+                    dataBuffer.push(raw[i][1], raw[i][2], raw[i][3]);
+                else if (type === 2) {
+                    dataBuffer.push(raw[i][1], raw[i][2], raw[i][3]);
+                    color.push(raw[i][4]/255, raw[i][5]/255, raw[i][6]/255)
+                }
+                else if (type === 3) {
+                    dataBuffer.push(raw[i][1], raw[i][2], raw[i][3]);
+                    color.push(raw[i][5]/255, raw[i][6]/255, raw[i][7]/255)
+                }
+            }
 
             obj.positions = dataBuffer.flat(3);
 
             obj.geometry = new THREE.BufferGeometry();
             obj.geometry.setAttribute("position", new THREE.Float32BufferAttribute(obj.positions, 3));
+            if (type === 2 || type === 3)
+                obj.geometry.setAttribute("colors", new THREE.Float32BufferAttribute(color, 3));
             // obj.material = new THREE.PointsMaterial({ size: obj.size, name: obj.level,color: obj.color,});
             obj.material = new CustomShaderMaterial({
                 baseMaterial: TYPES.POINTS,
@@ -610,7 +666,7 @@ class App {
                 vShader: vShader,
                 fShader: fShader(this.gradientColors.length),
                 uniforms: {
-                    colors: {
+                    colorsGradient: {
                         value: this.gradientColors,
                     },
                     bounds: {
@@ -628,7 +684,10 @@ class App {
                     enableGradient: {
                         value: this.gradient.enableGradient,
                     },
-                    color: {
+                    type: {
+                        value: type,
+                    },
+                    colorBase: {
                         value: new THREE.Color(obj.color),
                     },
                     circle: {
@@ -637,6 +696,7 @@ class App {
                 },
                 passthrough: {
                     size: obj.size,
+                    vertexColors: type === 2 || type === 3,
                 },
             })
             obj.points = new THREE.Points(obj.geometry, obj.material);
@@ -651,9 +711,10 @@ class App {
     resetScene(){
         for (let [type, obj] of Object.entries(this.objects)) {
             if (obj.positions) obj.positions = [];
-            if (obj.points) this.scene.remove( obj.points );
+            if (obj.points) {this.scene.remove( obj.points );obj.points = undefined}
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) obj.material.dispose();
+            if (obj.colorBuffer) delete obj.colorBuffer;
         }   
     }
     parseData(text) {
@@ -663,7 +724,7 @@ class App {
             item = item.trim().replaceAll(',', '');
             if (item.charAt(0)!=="#" && item !=="") {
                 let line = item.split(/\s+/);
-                if (line.length === 3)
+                if ([3, 6, 7].includes(line.length))
                     line.unshift(this.objects.unclassified.level);
                 result.push(line);
             }
@@ -741,6 +802,141 @@ class App {
         let sum = arr.reduce((a, b) => a + b, 0);
         return (sum / arr.length);
     }
+    loadLasFile(e) {
+        if (this.settings.resetSceneOnLoad) this.resetScene();
+        let batcher = e.detail.batches[0].batcher;
+        let header = e.detail.batches[0].header;
+        console.log(e.detail.batches)
+        let appearedClasses = new Set();
+        this.data = [];
+        this.minX = header.mins[0];
+        this.maxX = header.maxs[0];
+        this.minY = header.mins[1];
+        this.maxY = header.maxs[1];
+        this.minZ = header.mins[2];
+        this.maxZ = header.maxs[2];
+        let meanX = 0;
+        let meanY = 0;
+        let meanZ = 0;
+        // this.camera.position.set(this.minX, this.minY, this.minZ);
+        this.corrective = new THREE.Vector3(header.mins[0],
+            header.mins[1],
+            header.mins[2]);
+        let cameraPoint;
+        let minZ = Infinity;
+        let maxZ = -Infinity;
+        batcher.forEach(batch => {
+            for (let i = 0; i< batch.pointsCount; i++) {
+                let point = batch.getPoint(i);
+                let pointCoord = point.position;
+                pointCoord[0] = pointCoord[0] * header.scale[0] + (header.offset[0]- this.corrective.x);
+                pointCoord[1] = pointCoord[1] * header.scale[1] + (header.offset[1]- this.corrective.y);
+                pointCoord[2] = pointCoord[2] * header.scale[2] + (header.offset[2] - this.corrective.z);
+                minZ = Math.min(minZ, pointCoord[2]);
+                maxZ = Math.max(maxZ, pointCoord[2]);
+                meanX += pointCoord[0];
+                meanY += pointCoord[1];
+                meanZ += pointCoord[2];
+                if(i === 0) {
+                    cameraPoint = pointCoord;
+                }
+                let obj = this.objects[Object.keys(this.objects)[point.classification ?? 0]];
+                appearedClasses.add(obj.level);
+                if (!obj.positions) obj.positions = [];
+                obj.positions.push(...pointCoord);
+                if (point.color) {
+                    let color = point.color;
+                    color[0] = (color[0] / 255) / 255;
+                    color[1] = (color[1] / 255) / 255;
+                    color[2] = (color[2] / 255) / 255;
+                    if (!obj.colorBuffer) obj.colorBuffer = [];
+                    obj.colorBuffer.push(...color);
+                }
+            }
+        })
+        meanX /= header.pointsCount;
+        meanY /= header.pointsCount;
+        meanZ /= header.pointsCount;
+
+        if (appearedClasses.size === 1 && appearedClasses.has(this.objects.unclassified.level)) {
+            this.colorConfig.option = "rgb";
+            this.colorConfig.value = 2;
+            if (! this.objects.unclassified?.colorBuffer?.length)
+                this.gradient.enableGradient = true;
+            else
+                this.gradient.enableGradient = false;
+        } else {
+            this.gradient.enableGradient = false;
+        }
+
+        for (let [type, obj] of Object.entries(this.objects)) {
+            if (!appearedClasses.has(obj.level)) {
+                obj.points = undefined;
+                continue;
+            }
+            obj.geometry = new THREE.BufferGeometry();
+            for (let i = 0; i < obj.positions.length; i+=3) {
+                obj.positions[i] -= meanX;
+                obj.positions[i+1] -= meanY;
+                obj.positions[i+2] -= meanZ;
+            }
+            obj.geometry.setAttribute("position", new THREE.Float32BufferAttribute(obj.positions, 3));
+            if (obj.colorBuffer)
+                obj.geometry.setAttribute("colors", new THREE.Float32BufferAttribute(obj.colorBuffer, 3));
+            // obj.material = new THREE.PointsMaterial({ size: obj.size, name: obj.level,color: obj.color,});
+            obj.material = new CustomShaderMaterial({
+                baseMaterial: TYPES.POINTS,
+                // Our Custom vertex shader
+                vShader: vShader,
+                fShader: fShader(this.gradientColors.length),
+                uniforms: {
+                    colorsGradient: {
+                        value: this.gradientColors,
+                    },
+                    bounds: {
+                        value: this.gradientBounds,
+                    },
+                    len: {
+                        value: this.gradientColors.length,
+                    },                
+                    bboxMin: {
+                        value: minZ - meanZ,
+                    },
+                    bboxMax: {
+                        value: maxZ - meanZ,
+                    },
+                    enableGradient: {
+                        value: this.gradient.enableGradient,
+                    },
+                    type: {
+                        value: this.colorConfig.value,
+                    },
+                    colorBase: {
+                        value: new THREE.Color(obj.color),
+                    },
+                    circle: {
+                        value: false,
+                    }
+                },
+                passthrough: {
+                    size: obj.size,
+                    vertexColors: Boolean(obj.colorBuffer),
+                },
+            })
+            obj.points = new THREE.Points(obj.geometry, obj.material);
+            obj.points.name = obj.title;
+        
+            this.scene.add(obj.points);
+        }
+        
+        this.initGUI();
+        this.initProfile();
+        this.initNavigation();
+
+        
+        this.centerPoint = new THREE.Vector3(meanX, meanY, meanZ);
+    }
 }
 window.app = new App();
 console.log(app)
+document.addEventListener("load.completed", app.loadLasFile.bind(app))
