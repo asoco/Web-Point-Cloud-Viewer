@@ -10,6 +10,7 @@ export const fShader = (length) => {return {
         uniform bool circle;
         uniform float type;
         varying vec3 vvColor;
+        uniform float maxColorComponent;
         float remap( float minval, float maxval, float curval )
         {
             return ( curval - minval ) / ( maxval - minval );
@@ -35,6 +36,6 @@ export const fShader = (length) => {return {
         else if(type == 1.0)
            newColor = vec4(colorBase, 1.0);  
         else
-            newColor = vec4(vvColor, 1.0); 
+            newColor = vec4(vvColor, 1.0) / maxColorComponent; 
     `,
 }}

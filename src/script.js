@@ -692,7 +692,10 @@ class App {
                     },
                     circle: {
                         value: false,
-                    }
+                    },
+                    maxColorComponent: {
+                        value: 1,
+                    },
                 },
                 passthrough: {
                     size: obj.size,
@@ -825,6 +828,7 @@ class App {
         let cameraPoint;
         let minZ = Infinity;
         let maxZ = -Infinity;
+        let maxColor = null;
         batcher.forEach(batch => {
             for (let i = 0; i< batch.pointsCount; i++) {
                 let point = batch.getPoint(i);
@@ -846,9 +850,19 @@ class App {
                 obj.positions.push(...pointCoord);
                 if (point.color) {
                     let color = point.color;
-                    color[0] = (color[0] / 255) / 255;
-                    color[1] = (color[1] / 255) / 255;
-                    color[2] = (color[2] / 255) / 255;
+                    color[0] = (color[0] / 255);
+                    color[1] = (color[1] / 255);
+                    color[2] = (color[2] / 255);
+                    if (maxColor === null) {
+                        maxColor = new THREE.Color();
+                        maxColor.r = color[0];
+                        maxColor.g = color[1];
+                        maxColor.b = color[2];
+                    } else {
+                        maxColor.r = Math.max(maxColor.r, color[0]);
+                        maxColor.g = Math.max(maxColor.g, color[1]);
+                        maxColor.b = Math.max(maxColor.b, color[2]);
+                    }
                     if (!obj.colorBuffer) obj.colorBuffer = [];
                     obj.colorBuffer.push(...color);
                 }
@@ -857,7 +871,11 @@ class App {
         meanX /= header.pointsCount;
         meanY /= header.pointsCount;
         meanZ /= header.pointsCount;
+        let maxColorComponent;
+        if (maxColor)
+            maxColorComponent =Math.max(maxColor.r, maxColor.g, maxColor.b);
 
+            console.log(maxColorComponent)
         if (appearedClasses.size === 1 && appearedClasses.has(this.objects.unclassified.level)) {
             this.colorConfig.option = "rgb";
             this.colorConfig.value = 2;
@@ -916,7 +934,10 @@ class App {
                     },
                     circle: {
                         value: false,
-                    }
+                    },
+                    maxColorComponent: {
+                        value: maxColorComponent ?? 1,
+                    },
                 },
                 passthrough: {
                     size: obj.size,
