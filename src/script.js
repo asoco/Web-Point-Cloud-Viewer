@@ -25,7 +25,7 @@ class App {
         this.data = [];
         this.scene = {};
         this.objects = {};
-        this.pickedPoints = [];
+        this.pickedPoints = [[]];
         this.pickedPointsClip = [];
         this.pickedPointsInfo = [];
         this.initInfo();
@@ -250,7 +250,7 @@ class App {
         let selectedObjects = this.selectObjectsByNames('marker', 'marker-line');
         selectedObjects.forEach(el => this.scene.remove(el));
         document.querySelectorAll('.label.measurement').forEach(label => label.remove());
-        this.pickedPoints = [];
+        this.pickedPoints = [[]];
     }
 
     clearMarkerLine() {
@@ -367,7 +367,7 @@ class App {
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
         if (event.ctrlKey && this.measurementSettings?.ruler?.enable)
-            this.#pickPoint();
+            this.#pickPoint(event.shiftKey);
 
         if (event.ctrlKey && this.measurementSettings?.info?.enable)
             this.#pickInfoMarker();
@@ -402,7 +402,6 @@ class App {
     }
 
     #createLine(points) {
-        this.clearMarkerLine();
         const material = new LineMaterial({ 
             color: this.measurementSettings.lineColor,
             alphaToCoverage: true,
@@ -498,15 +497,20 @@ class App {
         }
     }
 
-    #pickPoint() {
+    #pickPoint(newLine) {
         let intersections = this.#getIntersectedObjectsFromEmitedRay();
 
         if (intersections.length) {
             let intersectedPoint = intersections[0].object.geometry.attributes.position;
             let intersetedPointIndex = intersections[0].index;
-            this.pickedPoints.push(new THREE.Vector3().fromBufferAttribute(intersectedPoint, intersetedPointIndex));
-            this.scene.add(this.#createSphere(this.pickedPoints.at(-1)));
-            this.scene.add(this.#createLine(this.pickedPoints));
+            if (newLine)
+                this.pickedPoints.push([]);
+            this.pickedPoints[this.pickedPoints.length - 1].push(new THREE.Vector3().fromBufferAttribute(intersectedPoint, intersetedPointIndex));
+            this.scene.add(this.#createSphere(this.pickedPoints[this.pickedPoints.length - 1].at(-1)));
+            this.clearMarkerLine();
+            this.pickedPoints.forEach(picked => {
+                this.scene.add(this.#createLine(picked));
+            })
         }
         console.log(this.scene.children);
     }
