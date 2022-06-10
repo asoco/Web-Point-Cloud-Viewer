@@ -716,6 +716,10 @@ class App {
         }
     }
     resetScene(){
+        this.clearMarkerInfo();
+        this.clearMarkerLine();
+        this.clearMeasurements();
+        this.profileClipper.clearProfile();
         for (let [type, obj] of Object.entries(this.objects)) {
             if (obj.positions) obj.positions = [];
             if (obj.points) {this.scene.remove( obj.points );obj.points = undefined}
