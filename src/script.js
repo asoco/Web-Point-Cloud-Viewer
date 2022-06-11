@@ -16,6 +16,10 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
 import { Line2 } from 'three/examples/jsm/lines/Line2';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry'
 import {cancellableLoad, getBinaryLocal} from './js/loadLasFile'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { SobelOperatorShader } from './js/sobel/SobelOperatorShader';
 
 class App {
     constructor() {
@@ -165,6 +169,17 @@ class App {
         let axesContainer = document.getElementById('axesContainer');
         axesContainer.appendChild( this.axesRenderer.domElement );
         
+        this.renderer.render(this.scene, this.camera)
+
+        this.composer = new EffectComposer( this.renderer );
+        this.renderPass = new RenderPass( this.scene, this.camera );
+        this.composer.addPass( this.renderPass );
+
+        this.effectSobel = new ShaderPass( SobelOperatorShader );
+        this.effectSobel.uniforms[ 'resolution' ].value.x = window.innerWidth * window.devicePixelRatio;
+        this.effectSobel.uniforms[ 'resolution' ].value.y = window.innerHeight * window.devicePixelRatio;
+        this.composer.addPass( this.effectSobel );
+
         this.tick();
         
     }
@@ -175,6 +190,9 @@ class App {
         this.appearence = {
             pointType: {
                 circle: false,
+            },
+            edgeDetection: {
+                value: false,
             }
         }
 
@@ -185,6 +203,7 @@ class App {
                 obj.material.uniforms.circle.value = enabled;
             }
         }.bind(this))
+        this.appearenceFolder.add(this.appearence.edgeDetection, 'value').name('Edge detection');
 
         this.toggleFolder = this.gui.addFolder("Visibility");
         this.sizeFolder = this.gui.addFolder("Size");
@@ -275,7 +294,7 @@ class App {
         for (let [type, obj] of Object.entries(this.objects)) {
             if (!obj.points || !obj.material) continue;
             this.toggleFolder.add(obj.points, "visible", true).name(obj.title);
-            this.sizeFolder.add(obj.points.material, "size", 0, 1, 0.005).name(obj.title + " size");
+            this.sizeFolder.add(obj.points.material, "size", 0, 10, 0.005).name(obj.title + " size");
             let conf = { color: obj.colorhex };
             this.colorFolder.addColor(conf, "color").name(obj.title).onChange(function (colorValue) {
                 obj.material.uniforms.colorBase.value.set(colorValue);
@@ -328,7 +347,10 @@ class App {
         
         // this.initRayCast();
         // Render
-        this.renderer.render(this.scene, this.camera);
+        if (this.appearence?.edgeDetection.value)
+            this.composer.render();
+        else
+            this.renderer.render(this.scene, this.camera);
         this.labelRenderer.render(this.scene, this.camera);
         this.axesRenderer.render(this.axesScene, this.axesCamera);
         this.stats.update();
@@ -359,6 +381,15 @@ class App {
             this.renderer.setSize(this.sizes.width, this.sizes.height);
             this.labelRenderer.setSize(this.sizes.width, this.sizes.height);
             this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            this.composer.setSize( window.innerWidth, window.innerHeight );
+            
+            // this.rtEDL.setSize( window.innerWidth, window.innerHeight );
+
+            this.effectSobel.uniforms[ 'resolution' ].value.x = window.innerWidth * window.devicePixelRatio;
+            this.effectSobel.uniforms[ 'resolution' ].value.y = window.innerHeight * window.devicePixelRatio;
+            // this.edlShader.uniforms['screenWidth'].value = window.innerWidth;
+            // this.edlShader.uniforms['screenHeight'].value = window.innerHeight;
         });
     }
 
