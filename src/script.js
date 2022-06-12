@@ -84,7 +84,20 @@ class App {
                    roofs: { level: "6", color: 0xe2062c, colorhex: "#e2062c", size: 0.70, title: "Roofs" },
                     fake: { level: "7", color: 0x7209b7, colorhex: "#7209b7", size: 0.15, title: "False points" },
                 serviceA: { level: "8", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service A points" },
-                serviceB: { level: "9", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service B point" },
+                   water: { level: "9", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Water" },
+                    rail: { level: "10", color: 0xcf4a37, colorhex: "#cf4a37", size: 0.15, title: "Rail" },
+             roadSurface: { level: "11", color: 0xb7b1ae, colorhex: "#b7b1ae", size: 0.15, title: "Road Surface" },
+                serviceB: { level: "12", color: 0xf2e9e4, colorhex: "#f2e9e4", size: 0.15, title: "Service B points" },
+               wireGuard: { level: "13", color: 0x88171a, colorhex: "#88171a", size: 0.15, title: "Wire – Guard (Shield)" },
+           wireConductor: { level: "14", color: 0x88171a, colorhex: "#88171a", size: 0.15, title: "Wire – Conductor (Phase)" },
+       transmissionTower: { level: "15", color: 0x544c50, colorhex: "#544c50", size: 0.15, title: "Transmission Tower" },
+       wireStructureConn: { level: "16", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Wire-Structure Connector" },
+              bridgeDeck: { level: "17", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Bridge Deck" },
+               highNoise: { level: "18", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "High Noise" },
+           overheadStruc: { level: "19", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Overhead Structure" },
+           ignoredGround: { level: "20", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Ignored Ground" },
+                    snow: { level: "21", color: 0xffffff, colorhex: "#ffffff", size: 0.15, title: "Snow" },
+           tempExclusion: { level: "22", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Temporal Exclusion" },
         };
 
         this.AxesHelperSettings = {

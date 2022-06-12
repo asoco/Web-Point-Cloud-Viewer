@@ -38,6 +38,44 @@ var common = require("./common"),
 				"classification": dv.getUint8(15, true),
 				"color": [dv.getUint16(28, true), dv.getUint16(30, true), dv.getUint16(32, true)]
 			};
+		},
+		4: function(dv) {
+			return {
+				"position": [ dv.getInt32(0, true), dv.getInt32(4, true), dv.getInt32(8, true)],
+				"intensity": dv.getUint16(12, true),
+				"classification": dv.getUint8(15, true)
+			};
+		},
+		5: function(dv) {
+			return {
+				"position": [ dv.getInt32(0, true), dv.getInt32(4, true), dv.getInt32(8, true)],
+				"intensity": dv.getUint16(12, true),
+				"classification": dv.getUint8(15, true),
+				"color": [dv.getUint16(28, true), dv.getUint16(30, true), dv.getUint16(32, true)]
+			};
+		},
+		6: function(dv) {
+			return {
+				"position": [ dv.getInt32(0, true), dv.getInt32(4, true), dv.getInt32(8, true)],
+				"intensity": dv.getUint16(12, true),
+				"classification": dv.getUint8(16, true)
+			};
+		},
+		7: function(dv) {
+			return {
+				"position": [ dv.getInt32(0, true), dv.getInt32(4, true), dv.getInt32(8, true)],
+				"intensity": dv.getUint16(12, true),
+				"classification": dv.getUint8(16, true),
+				"color": [dv.getUint16(30, true), dv.getUint16(32, true), dv.getUint16(34, true)]
+			};
+		},
+		8: function(dv) {
+			return {
+				"position": [ dv.getInt32(0, true), dv.getInt32(4, true), dv.getInt32(8, true)],
+				"intensity": dv.getUint16(12, true),
+				"classification": dv.getUint8(16, true),
+				"color": [dv.getUint16(30, true), dv.getUint16(32, true), dv.getUint16(34, true)]
+			};
 		}
 	};
 
@@ -59,6 +97,7 @@ var common = require("./common"),
 
 	function parseLASHeader(arraybuffer) {
 		var o = {};
+		console.log(arraybuffer)
 
 		o.pointsOffset = readAs(arraybuffer, Uint32Array, 32*3);
 		o.pointsFormatId = readAs(arraybuffer, Uint8Array, 32*3+8);
@@ -77,6 +116,15 @@ var common = require("./common"),
 		o.maxs = [bounds[0], bounds[2], bounds[4]];
 		o.mins = [bounds[1], bounds[3], bounds[5]];
 
+		let ver = new Int8Array(arraybuffer, 24, 2);
+		let version = ver[0] * 10 + ver[1];
+
+		if (version > 13) {
+			var NumberOfPoints14 = readAs(arraybuffer, Uint32Array, start + 20, 2);
+			o.pointsCount = NumberOfPoints14[0] + 2**32*NumberOfPoints14[1];
+			if(!Number.isSafeInteger(o.pointsCount))
+				console.warn(o.pointsCount, 'exceeds MAX_SAFE_INTEGER');
+		}
 		return o;
 	}
 
@@ -290,8 +338,8 @@ var common = require("./common"),
 		this.arraybuffer = arraybuffer;
 
 		this.determineVersion();
-		if (this.version > 13)
-			throw new Error("Only file versions <= 1.3 are supported at this time");
+		if (this.version > 14)
+			throw new Error("Only file versions <= 1.4 are supported at this time");
 
 		this.determineFormat();
 		if (pointFormatReaders[this.formatId] === undefined)
