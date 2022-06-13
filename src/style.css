@@ -7,30 +7,15 @@ body,
 html {
     height: 100vh;
     font-family: Poppins;
-    /* background: linear-gradient(rgb(6, 2, 68) 0%, rgb(43, 39, 98) 100%); */
-    background: linear-gradient(124deg,#000108,#01020c,#02051d);
+    background: linear-gradient(124deg, #000108, #01020c, #02051d);
     background-size: 180% 180%;
-    animation: gradient-animation 27s ease infinite;
 }
 
-  
-  @keyframes gradient-animation {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-
-  #axesContainer {
+#axesContainer {
     position: fixed;
     left: 0px;
     bottom: 0px;
-  }
+}
 
 .webgl {
     position: fixed;
@@ -139,124 +124,37 @@ div#textnode {
 }
 
 .SPECTRAL {
-    border-image: linear-gradient(to bottom, 
-        rgb(157, 0, 65) 0%,
-        rgb(213, 61, 78) 10%,
-        rgb(244, 109, 66) 20%,
-        rgb(253, 174, 97) 30%,
-        rgb(254, 223, 139) 40%,
-        rgb(255, 255, 190) 50%,
-        rgb(230, 245, 152) 60%,
-        rgb(171, 221, 163) 70%,
-        rgb(102, 194, 165) 80%,
-        rgb(50, 135, 189) 90%,
-        rgb(93, 78, 162) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(157, 0, 65) 0%, rgb(213, 61, 78) 10%, rgb(244, 109, 66) 20%, rgb(253, 174, 97) 30%, rgb(254, 223, 139) 40%, rgb(255, 255, 190) 50%, rgb(230, 245, 152) 60%, rgb(171, 221, 163) 70%, rgb(102, 194, 165) 80%, rgb(50, 135, 189) 90%, rgb(93, 78, 162) 100%) 0 100%;
 }
 
 .PLASMA {
-    border-image: linear-gradient(to bottom, 
-        rgb(239, 248, 33) 0%,
-        rgb(251, 209, 36) 10%,
-        rgb(252, 173, 49) 20%,
-        rgb(245, 141, 69) 30%,
-        rgb(231, 110, 90) 40%,
-        rgb(213, 83, 109) 50%,
-        rgb(191, 57, 130) 60%,
-        rgb(166, 31, 151) 70%,
-        rgb(133, 6, 166) 80%,
-        rgb(98, 0, 166) 90%,
-        rgb(61, 3, 155) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(239, 248, 33) 0%, rgb(251, 209, 36) 10%, rgb(252, 173, 49) 20%, rgb(245, 141, 69) 30%, rgb(231, 110, 90) 40%, rgb(213, 83, 109) 50%, rgb(191, 57, 130) 60%, rgb(166, 31, 151) 70%, rgb(133, 6, 166) 80%, rgb(98, 0, 166) 90%, rgb(61, 3, 155) 100%) 0 100%;
 }
 
 .YELLOW_GREEN {
-    border-image: linear-gradient(to bottom,
-        rgb(250, 250, 110) 0%,
-        rgb(201, 237, 115) 10%,
-        rgb(155, 223, 123) 20%,
-        rgb(113, 206, 132) 30%,
-        rgb(74, 188, 139) 40%,
-        rgb(34, 169, 143) 50%,
-        rgb(0, 149, 142) 60%,
-        rgb(0, 130, 135) 70%,
-        rgb(15, 110, 124) 80%,
-        rgb(34, 90, 107) 90%,
-        rgb(41, 72, 88) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(250, 250, 110) 0%, rgb(201, 237, 115) 10%, rgb(155, 223, 123) 20%, rgb(113, 206, 132) 30%, rgb(74, 188, 139) 40%, rgb(34, 169, 143) 50%, rgb(0, 149, 142) 60%, rgb(0, 130, 135) 70%, rgb(15, 110, 124) 80%, rgb(34, 90, 107) 90%, rgb(41, 72, 88) 100%) 0 100%;
 }
+
 .VIRIDIS {
-    border-image: linear-gradient(to bottom,
-        rgb(253, 231, 36) 0%,
-        rgb(188, 222, 38) 10%,
-        rgb(121, 209, 81) 20%,
-        rgb(68, 190, 112) 30%,
-        rgb(34, 168, 132) 40%,
-        rgb(32, 144, 140) 50%,
-        rgb(41, 120, 142) 60%,
-        rgb(52, 94, 141) 70%,
-        rgb(64, 67, 135) 80%,
-        rgb(72, 35, 116) 90%,
-        rgb(68, 1, 83) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(253, 231, 36) 0%, rgb(188, 222, 38) 10%, rgb(121, 209, 81) 20%, rgb(68, 190, 112) 30%, rgb(34, 168, 132) 40%, rgb(32, 144, 140) 50%, rgb(41, 120, 142) 60%, rgb(52, 94, 141) 70%, rgb(64, 67, 135) 80%, rgb(72, 35, 116) 90%, rgb(68, 1, 83) 100%) 0 100%;
 }
+
 .INFERNO {
-    border-image: linear-gradient(to bottom,
-        rgb(251, 254, 164) 0%,
-        rgb(245, 219, 75) 10%,
-        rgb(251, 174, 18) 20%,
-        rgb(247, 131, 16) 30%,
-        rgb(230, 92, 46) 40%,
-        rgb(203, 65, 73) 50%,
-        rgb(169, 46, 94) 60%,
-        rgb(133, 32, 107) 70%,
-        rgb(95, 18, 110) 80%,
-        rgb(57, 9, 98) 90%,
-        rgb(19, 10, 52) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(251, 254, 164) 0%, rgb(245, 219, 75) 10%, rgb(251, 174, 18) 20%, rgb(247, 131, 16) 30%, rgb(230, 92, 46) 40%, rgb(203, 65, 73) 50%, rgb(169, 46, 94) 60%, rgb(133, 32, 107) 70%, rgb(95, 18, 110) 80%, rgb(57, 9, 98) 90%, rgb(19, 10, 52) 100%) 0 100%;
 }
+
 .GRAYSCALE {
-    border-image: linear-gradient(to bottom,
-        rgb(255, 255, 255) 0%,
-        rgb(0, 0, 0) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(255, 255, 255) 0%, rgb(0, 0, 0) 100%) 0 100%;
 }
+
 .TURBO {
-    border-image: linear-gradient(to bottom,
-        rgb(169, 21, 1) 0%,
-        rgb(208, 47, 4) 7%,
-        rgb(234, 80, 13) 13%,
-        rgb(250, 125, 32) 20%,
-        rgb(253, 171, 51) 27%,
-        rgb(237, 207, 57) 33%,
-        rgb(205, 235, 52) 40%,
-        rgb(164, 252, 59) 47%,
-        rgb(109, 253, 98) 53%,
-        rgb(50, 241, 151) 60%,
-        rgb(23, 220, 194) 67%,
-        rgb(40, 187, 235) 73%,
-        rgb(65, 147, 254) 80%,
-        rgb(70, 107, 227) 87%,
-        rgb(64, 64, 161) 93%,
-        rgb(48, 18, 59) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(169, 21, 1) 0%, rgb(208, 47, 4) 7%, rgb(234, 80, 13) 13%, rgb(250, 125, 32) 20%, rgb(253, 171, 51) 27%, rgb(237, 207, 57) 33%, rgb(205, 235, 52) 40%, rgb(164, 252, 59) 47%, rgb(109, 253, 98) 53%, rgb(50, 241, 151) 60%, rgb(23, 220, 194) 67%, rgb(40, 187, 235) 73%, rgb(65, 147, 254) 80%, rgb(70, 107, 227) 87%, rgb(64, 64, 161) 93%, rgb(48, 18, 59) 100%) 0 100%;
 }
+
 .RAINBOW {
-    border-image: linear-gradient(to bottom,
-        rgb(255, 0, 0) 0%,
-        rgb(255, 163, 0) 16%,
-        rgb(255, 255, 0) 33%,
-        rgb(0, 255, 0) 50%,
-        rgb(0, 255, 255) 66%,
-        rgb(0, 0, 255) 83%,
-        rgb(70, 0, 182) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(255, 0, 0) 0%, rgb(255, 163, 0) 16%, rgb(255, 255, 0) 33%, rgb(0, 255, 0) 50%, rgb(0, 255, 255) 66%, rgb(0, 0, 255) 83%, rgb(70, 0, 182) 100%) 0 100%;
 }
+
 .CONTOUR {
-    border-image: linear-gradient(to bottom,
-        rgb(255, 255, 255) 0%,
-        rgb(255, 255, 255) 96%,
-        rgb(0, 0, 0) 97%,
-        rgb(0, 0, 0) 100%
-    ) 0 100%;
+    border-image: linear-gradient(to bottom, rgb(255, 255, 255) 0%, rgb(255, 255, 255) 96%, rgb(0, 0, 0) 97%, rgb(0, 0, 0) 100%) 0 100%;
 }
