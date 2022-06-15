@@ -313,8 +313,8 @@ class App {
                 obj.material.uniforms.colorBase.value.set(colorValue);
             });
         }
-        this.gradientFolrder = this.colorFolder.addFolder('Gradient');
-        this.gradientFolrder.add(this.gradient, 'enableGradient')
+        this.gradientFolder = this.colorFolder.addFolder('Gradient');
+        this.gradientFolder.add(this.gradient, 'enableGradient')
             .name("Enable")
             .listen()
             .onChange(function (enabled) {
@@ -325,10 +325,9 @@ class App {
             }.bind(this));
         this.gradientNames.forEach(function (el) {
             let conf = {color: this.setGradient.bind(this, el)};
-            this.gradientFolrder.add(conf, 'color').name(el)
+            this.gradientFolder.add(conf, 'color').name(el)
                 .domElement.parentElement.parentElement.classList.add(el);
         }.bind(this))
-        // this.gradientFolrder.add()
     }
 
     setGradient(color) {
