@@ -24,7 +24,13 @@ import { SobelOperatorShader } from './js/sobel/SobelOperatorShader';
 class App {
     constructor() {
         this.settings={
-            resetSceneOnLoad:true
+            resetSceneOnLoad:true,
+            saveSettings: {
+                value: true,
+                clear: function() {
+                    localStorage.clear();
+                },
+            },
         }
         this.data = [];
         this.scene = {};
@@ -38,6 +44,24 @@ class App {
         };
         this.gradientNames = getGradientNames();
         [this.gradientColors, this.gradientBounds] = getGradient(Gradients.RAINBOW);
+        let localAppearence = JSON.parse(localStorage.getItem('appearence'));
+        if (localAppearence)
+            this.appearence = localAppearence;
+        else 
+            this.appearence = {
+                pointType: {
+                    circle: true,
+                },
+                edgeDetection: {
+                    value: false,
+                },
+                activeCamera: {
+                    type: "perspective",
+                },
+                useSizeAttenuation: {
+                    value: true,
+                },                
+            }
         this.init();
 
     }
@@ -69,7 +93,7 @@ class App {
 
     initNavigation() {
         let range = Math.abs(this.maxY - this.minY);
-        this.nav = new Navigation(this.camera, this.controls, 2 * range, this.gui);
+        this.nav = new Navigation(this.activeCamera, this.controls, 2 * range, this.gui);
         this.nav.initGUI();
     }
 
@@ -100,6 +124,21 @@ class App {
            tempExclusion: { level: "22", color: 0xd4f1f9, colorhex: "#d4f1f9", size: 0.15, title: "Temporal Exclusion" },
         };
 
+        for (let [type, obj] of Object.entries(this.objects)) {
+            let storage = JSON.parse(localStorage.getItem(obj.title));
+            if (!storage)
+                continue;
+            if (storage.size !== undefined)
+                obj.size = Number(storage.size);
+            if (storage.color !== undefined) {
+                obj.color = Number(storage.color);
+                obj.colorhex = `#${obj.color.toString(16).padStart(6, 0)}`;
+            }
+            if (storage.visible !== undefined) {
+                obj.visible = storage.visible;
+            }
+        }
+
         this.AxesHelperSettings = {
             canvas: {
                 width: 100,
@@ -117,12 +156,24 @@ class App {
         this.initSizes();
 
         // Init camera
-        this.camera = new THREE.PerspectiveCamera(75, this.sizes.width / this.sizes.height, 0.1, 10000);
+        this.aspect = this.sizes.width / this.sizes.height;
+
+        this.camera = new THREE.PerspectiveCamera(75, this.aspect, 0.1, 10000);
         this.camera.position.set(20, 20, 0);
         this.camera.up.set(0,0,1);
 
+        this.frustumSize = 75 * 0.5;
+        this.cameraOrtho = new THREE.OrthographicCamera(this.frustumSize * this.aspect / - 2, this.frustumSize * this.aspect / 2, this.frustumSize / 2, this.frustumSize / - 2, -10000, 10000);
+        this.cameraOrtho.position.set(20, 20, 0);
+        this.cameraOrtho.up.set(0,0,1);
+
+        if (this.appearence.activeCamera.type === "perspective") 
+            this.activeCamera = this.camera;
+        else
+            this.activeCamera = this.cameraOrtho;
+
         this.axesCamera = new THREE.PerspectiveCamera(75, this.AxesHelperSettings.canvas.width / this.AxesHelperSettings.canvas.height, 0.1, 10000);
-        this.axesCamera.up = this.camera.up;
+        this.axesCamera.up = this.activeCamera.up;
         
         this.cameraPostion = new THREE.Vector3();
         this.cameraDirection = new THREE.Vector3();
@@ -140,13 +191,13 @@ class App {
         document.body.appendChild(this.labelRenderer.domElement);
 
         // Init controls
-        this.controls = new OrbitControls(this.camera, this.labelRenderer.domElement);
+        this.controls = new OrbitControls(this.activeCamera, this.labelRenderer.domElement);
         this.controls.enableDamping = true;
         this.controls.listenToKeyEvents(window);
         let thus = this;
 
         this.controls.addEventListener('change', ()=>{
-            let cache = thus.camera.getWorldPosition(thus.cameraPostion);
+            let cache = thus.activeCamera.getWorldPosition(thus.cameraPostion);
             thus.info.cameraX.innerText = cache.x.toFixed(3);
             thus.info.cameraY.innerText = cache.y.toFixed(3);
             thus.info.cameraZ.innerText = cache.z.toFixed(3);
@@ -158,7 +209,7 @@ class App {
         document.body.appendChild(this.stats.dom);
         this.stats.begin();
         // Add things to scene
-        this.scene.add(this.camera);
+        this.scene.add(this.activeCamera);
         // this.scene.add(new THREE.AxesHelper(20));
         this.axesScene.add(new THREE.AxesHelper());
         this.scene.add(pointLight);
@@ -182,10 +233,10 @@ class App {
         let axesContainer = document.getElementById('axesContainer');
         axesContainer.appendChild( this.axesRenderer.domElement );
         
-        this.renderer.render(this.scene, this.camera)
+        this.renderer.render(this.scene, this.activeCamera)
 
         this.composer = new EffectComposer( this.renderer );
-        this.renderPass = new RenderPass( this.scene, this.camera );
+        this.renderPass = new RenderPass( this.scene, this.activeCamera );
         this.composer.addPass( this.renderPass );
 
         this.effectSobel = new ShaderPass( SobelOperatorShader );
@@ -200,15 +251,6 @@ class App {
         if (this.gui) this.gui.destroy();
         this.gui = new dat.GUI();
 
-        this.appearence = {
-            pointType: {
-                circle: false,
-            },
-            edgeDetection: {
-                value: false,
-            }
-        }
-
         this.appearenceFolder = this.gui.addFolder("Appearence");
         this.appearenceFolder.add(this.appearence.pointType, 'circle').onChange(function (enabled) {
             for (let [type, obj] of Object.entries(this.objects)) {
@@ -217,6 +259,29 @@ class App {
             }
         }.bind(this))
         this.appearenceFolder.add(this.appearence.edgeDetection, 'value').name('Edge detection');
+        this.appearenceFolder.add(this.appearence.activeCamera, 'type', ['perspective', 'ortho']).name("Camera").onChange(function(event) {
+            if (event === "perspective") {
+                this.activeCamera = this.camera;
+                this.activeCamera.position.copy(this.cameraOrtho.position);
+            } else {
+                this.activeCamera = this.cameraOrtho;
+                this.activeCamera.position.copy(this.camera.position);
+            }
+            this.controls.object = this.activeCamera;
+            this.nav.destroyGUI();
+            this.initNavigation();
+            this.renderPass.camera = this.activeCamera;
+        }.bind(this))
+        this.appearenceFolder.add(this.appearence.useSizeAttenuation, "value")
+            .name("Size Attenuation")
+            .onChange(function (event) {
+            console.log(event);
+            for (let [type, obj] of Object.entries(this.objects)) {
+                if (!obj.points || !obj.material) continue;
+                obj.material.sizeAttenuation = event;
+                obj.material.needsUpdate = true;
+            }
+        }.bind(this));
 
         this.toggleFolder = this.gui.addFolder("Visibility");
         this.sizeFolder = this.gui.addFolder("Size");
@@ -233,12 +298,19 @@ class App {
                     obj.material.uniforms.type.value = 1
             }
         }.bind(this));
-        let loaddataconf = {
+        this.loaddataconf = {
             add: function () {
                 document.getElementById("file-input").click();
             },
+            preserveSettings: false,
         };
-        this.loadbtn = this.gui.add(loaddataconf, "add").name("Load data");
+        this.loadFolder = this.gui.addFolder("Load data");
+        this.loadbtn = this.loadFolder.add(this.loaddataconf, "add").name("Load data");
+        this.preserveSettings = this.loadFolder.add(this.loaddataconf, "preserveSettings").name("Preserve Settings");
+        
+        this.settingFolder = this.gui.addFolder("Settings");
+        this.settingSave = this.settingFolder.add(this.settings.saveSettings, "value").name("Save Settings On Exit");
+        this.settingClear = this.settingFolder.add(this.settings.saveSettings, "clear").name("Clear");
         // this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
         this.measurementSettings = {
             ruler: {
@@ -307,7 +379,8 @@ class App {
         for (let [type, obj] of Object.entries(this.objects)) {
             if (!obj.points || !obj.material) continue;
             this.toggleFolder.add(obj.points, "visible", true).name(obj.title);
-            this.sizeFolder.add(obj.points.material, "size", 0, 10, 0.005).name(obj.title + " size");
+            this.sizeFolder.add(obj.points.material, "size", 0, 10, 0.005).name(obj.title + " size")
+                .onChange(el => console.log(el));
             let conf = { color: obj.colorhex };
             this.colorFolder.addColor(conf, "color").name(obj.title).onChange(function (colorValue) {
                 obj.material.uniforms.colorBase.value.set(colorValue);
@@ -362,11 +435,11 @@ class App {
         if (this.appearence?.edgeDetection.value)
             this.composer.render();
         else
-            this.renderer.render(this.scene, this.camera);
-        this.labelRenderer.render(this.scene, this.camera);
+            this.renderer.render(this.scene, this.activeCamera);
+        this.labelRenderer.render(this.scene, this.activeCamera);
         this.axesRenderer.render(this.axesScene, this.axesCamera);
         this.stats.update();
-        this.axesCamera.position.copy( this.camera.position );
+        this.axesCamera.position.copy( this.activeCamera.position );
         this.axesCamera.position.sub( this.controls.target ); // added by @libe
         this.axesCamera.position.setLength( 1 );
     
@@ -386,9 +459,14 @@ class App {
             this.sizes.height = window.innerHeight;
 
             // Update camera
-            this.camera.aspect = this.sizes.width / this.sizes.height;
-            this.camera.updateProjectionMatrix();
-
+            this.activeCamera.aspect = this.sizes.width / this.sizes.height;
+            this.aspect = this.sizes.width / this.sizes.height;
+            this.cameraOrtho.left = this.frustumSize * this.aspect / - 2;
+            this.cameraOrtho.right = this.frustumSize * this.aspect / 2;
+            this.cameraOrtho.top = this.frustumSize / 2;
+            this.cameraOrtho.bottom = this.frustumSize / - 2;
+            this.cameraOrtho.updateMatrix();
+            this.activeCamera.updateProjectionMatrix();            
             // Update renderer
             this.renderer.setSize(this.sizes.width, this.sizes.height);
             this.labelRenderer.setSize(this.sizes.width, this.sizes.height);
@@ -416,7 +494,7 @@ class App {
             this.#pickInfoMarker();
 
         if(event.ctrlKey && this.profileClipper.clippingSettings.profile.enabled)
-            this.profileClipper.pickClipMarker(this.measurementSettings.markerColor, this.measurementSettings.lineColor, this.mouse, this.camera);
+            this.profileClipper.pickClipMarker(this.measurementSettings.markerColor, this.measurementSettings.lineColor, this.mouse, this.activeCamera);
     }
 
     #onMouseHover(event) {
@@ -485,7 +563,7 @@ class App {
     }
 
     #getIntersectedObjectsFromEmitedRay() {
-        this.raycaster.setFromCamera(this.mouse, this.camera);
+        this.raycaster.setFromCamera(this.mouse, this.activeCamera);
         
         let intersections = []
         this.scene.children.filter(el => el.isPoints).forEach(points => {
@@ -738,7 +816,7 @@ class App {
                         value: new THREE.Color(obj.color),
                     },
                     circle: {
-                        value: false,
+                        value: this.appearence.pointType.circle,
                     },
                     maxColorComponent: {
                         value: 1,
@@ -747,10 +825,12 @@ class App {
                 passthrough: {
                     size: obj.size,
                     vertexColors: type === 2 || type === 3,
+                    sizeAttenuation: this.appearence?.useSizeAttenuation?.value ?? true,
                 },
             })
             obj.points = new THREE.Points(obj.geometry, obj.material);
             obj.points.name = obj.title;
+            obj.points.visible = obj.visible ?? true;
             
             // obj.geometry.rotateX(-1.5);
             // obj.geometry.translate(-1, -2, 11);
@@ -758,7 +838,42 @@ class App {
             this.scene.add(obj.points);
         }
     }
+    saveSettings() {
+        for (let [type, obj] of Object.entries(this.objects)) {
+            if (!obj.points || !obj.material)
+                continue;
+            let set = {
+                size: obj.material.size,
+                color: obj.material?.uniforms?.colorBase?.value ?? obj.color,
+                visible: obj.points.visible,
+            }
+            localStorage.setItem(obj.title, JSON.stringify(set));
+        }
+        localStorage.setItem("appearence", JSON.stringify(this.appearence));
+    }
+    getSettings() {
+        let localAppearence = JSON.parse(localStorage.getItem('appearence'));
+        if (localAppearence)
+            this.appearence = localAppearence;
+
+        for (let [type, obj] of Object.entries(this.objects)) {
+            let storage = JSON.parse(localStorage.getItem(obj.title));
+            if (!storage)
+                continue;
+            if (storage.size !== undefined)
+                obj.size = Number(storage.size);
+            if (storage.color !== undefined) {
+                obj.color = Number(storage.color);
+                obj.colorhex = `#${obj.color.toString(16).padStart(6, 0)}`;
+            }
+            if (storage.visible !== undefined) {
+                obj.visible = storage.visible;
+            }
+        }
+    }
     resetScene(){
+        if (this.loaddataconf.preserveSettings)
+            this.saveSettings();
         this.clearMarkerInfo();
         this.clearMarkerLine();
         this.clearMeasurements();
@@ -770,6 +885,8 @@ class App {
             if (obj.material) obj.material.dispose();
             if (obj.colorBuffer) delete obj.colorBuffer;
         }   
+        if (this.loaddataconf.preserveSettings)
+            this.getSettings();
     }
     parseData(text) {
         let tmp = text.split("\n");
@@ -984,7 +1101,7 @@ class App {
                         value: new THREE.Color(obj.color),
                     },
                     circle: {
-                        value: false,
+                        value: this.appearence.pointType.circle,
                     },
                     maxColorComponent: {
                         value: maxColorComponent ?? 1,
@@ -997,6 +1114,7 @@ class App {
             })
             obj.points = new THREE.Points(obj.geometry, obj.material);
             obj.points.name = obj.title;
+            obj.points.visible = obj.visible ?? true;
         
             this.scene.add(obj.points);
         }
@@ -1012,3 +1130,12 @@ class App {
 window.app = new App();
 console.log(app)
 document.addEventListener("load.completed", app.loadLasFile.bind(app))
+
+function exitConformation() {
+    // if (confirm("Would you like to save settings?"))
+    if (app.settings.saveSettings.value)
+        app.saveSettings();
+    return null;
+    
+}
+window.onbeforeunload = exitConformation;

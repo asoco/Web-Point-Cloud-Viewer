@@ -26,6 +26,10 @@ export class Navigation {
         this.nav.add(this.navigationSettings, 'back');
     }
 
+    destroyGUI() {
+        this.gui.removeFolder(this.nav);
+    }
+
     backToCenter() {
         this.controls.target.set(0, 0, 0);
         this.controls.update();
