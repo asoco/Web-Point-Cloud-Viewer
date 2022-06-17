@@ -1,3 +1,4 @@
+import localization  from '../locale/locale.json';
 export class Navigation {
     
     constructor(camera, controls, range, gui) {
@@ -5,7 +6,9 @@ export class Navigation {
         this.controls = controls;
         this.range = range;
         this.gui = gui;
-
+        this.settings = {
+            lang:"ru"
+        }
         this.navigationSettings = {
             top: this.setTopView.bind(this),
             bottom: this.setBottomView.bind(this),
@@ -17,13 +20,13 @@ export class Navigation {
     }
 
     initGUI() {
-        this.nav = this.gui.addFolder('Navigation');
-        this.nav.add(this.navigationSettings, 'top');
-        this.nav.add(this.navigationSettings, 'bottom');
-        this.nav.add(this.navigationSettings, 'left');
-        this.nav.add(this.navigationSettings, 'right');
-        this.nav.add(this.navigationSettings, 'front');
-        this.nav.add(this.navigationSettings, 'back');
+        this.nav = this.gui.addFolder(this.#getUIstring("navigation", 'Navigation'));
+        this.nav.add(this.navigationSettings, 'top').name(this.#getUIstring("nav-top", 'Top'));
+        this.nav.add(this.navigationSettings, 'bottom').name(this.#getUIstring("nav-bottom", 'Bottom'));
+        this.nav.add(this.navigationSettings, 'left').name(this.#getUIstring("nav-left", 'Left'));
+        this.nav.add(this.navigationSettings, 'right').name(this.#getUIstring("nav-right", 'Right'));
+        this.nav.add(this.navigationSettings, 'front').name(this.#getUIstring("nav-front", 'Front'));
+        this.nav.add(this.navigationSettings, 'back').name(this.#getUIstring("nav-back", 'Back'));
     }
 
     destroyGUI() {
@@ -75,6 +78,11 @@ export class Navigation {
         this.camera.position.x = 0;
         this.camera.position.y = -this.range;
         this.camera.position.z = 0;
+    }
+    #getUIstring(stringID,fallback){
+        let lang = this?.settings?.lang ? this.settings.lang : "en"; 
+        let noLangFallback = (Math.random() + 1).toString(36).substring(7);
+        return `${localization[lang]["ui"][stringID] || fallback || stringID || `no-locale-${noLangFallback}`}`
     }
     
 }

@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { Utils } from './utils';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import localization  from '../locale/locale.json';
 
 export class Profile {
 
     constructor(scene, renderer, raycaster, gui, objects, range, sizes) {
+        this.settings = {
+            lang:"ru"
+        }
         this.scene = scene;
         this.renderer = renderer;
         this.raycaster = raycaster;
@@ -43,26 +47,27 @@ export class Profile {
     }
 
     initGUI() {
-        this.clipping = this.gui.addFolder('Clipping');
-        this.profile = this.clipping.addFolder('Profile');
-        this.profile.add(this.clippingSettings.profile, 'enabled').name("Enable");
-        this.profile.add(this.clippingSettings.profile, 'enabledMainWindowClipping').name("Enable Global CLipping").onChange(function(enabled) {
+        
+        this.clipping = this.gui.addFolder(this.#getUIstring("clipping", 'Clipping'));
+        this.profile = this.clipping.addFolder(this.#getUIstring("profile", 'Profile'));
+        this.profile.add(this.clippingSettings.profile, 'enabled').name(this.#getUIstring("enable", 'Enable'));
+        this.profile.add(this.clippingSettings.profile, 'enabledMainWindowClipping').name(this.#getUIstring("global-clip", "Global clipping")).onChange(function(enabled) {
             this.renderer.localClippingEnabled = enabled;
         }.bind(this));
-        this.profile.add(this.clippingSettings.profile, 'width', 0, 2 * this.range, 0.005).onChange(this.clipProfileWidthChange.bind(this)).name("Width");
+        this.profile.add(this.clippingSettings.profile, 'width', 0, 2 * this.range, 0.005).onChange(this.clipProfileWidthChange.bind(this)).name(this.#getUIstring("width", "Clip radius"));
         this.profile.add(this.clippingSettings.profile, 'showHelpers').onChange(function(showHelpers){
             if(this.helpers) this.helpers.visible = showHelpers;
-        }.bind(this));
-        this.profile.add(this.clippingSettings.profile, 'showWindow').name('Open Window');
-        this.profile.add(this.clippingSettings.profile, 'clear').name("Clear");
+        }.bind(this)).name(this.#getUIstring("show-helpers", "Show helpers"));
+        this.profile.add(this.clippingSettings.profile, 'showWindow').name(this.#getUIstring("profile-window", 'Open Window'));
+        this.profile.add(this.clippingSettings.profile, 'clear').name(this.#getUIstring("clear", "Clear"));
 
-        this.clipTask = this.profile.addFolder('Clip Task');
+        this.clipTask = this.profile.addFolder(this.#getUIstring("clip-task", 'Clip mode'));
         this.clipTask.add(this.clippingSettings.profile.task.inside, 'enabled')
-            .listen().onChange(() => this.profileClipTaskChange('inside')).name('Inside');
+            .listen().onChange(() => this.profileClipTaskChange('inside')).name(this.#getUIstring('inside', 'Inside'));
         this.clipTask.add(this.clippingSettings.profile.task.outside, 'enabled')
-            .listen().onChange(() => this.profileClipTaskChange('outside')).name('Outside');
+            .listen().onChange(() => this.profileClipTaskChange('outside')).name(this.#getUIstring('outside', 'Outside'));
         this.clipTask.add(this.clippingSettings.profile.task.none, 'enabled')
-            .listen().onChange(() => this.profileClipTaskChange('none')).name('None');
+            .listen().onChange(() => this.profileClipTaskChange('none')).name(this.#getUIstring('none', 'None'));
     }
 
     createLineClipper(points, lineColor) {
@@ -355,5 +360,10 @@ export class Profile {
 
     tick() {
         this.rendererProfile.render(this.sceneProfile, this.cameraProfile);
+    }
+    #getUIstring(stringID,fallback){
+        let lang = this?.settings?.lang ? this.settings.lang : "en"; 
+        let noLangFallback = (Math.random() + 1).toString(36).substring(7);
+        return `${localization[lang]["ui"][stringID] || fallback || stringID || `no-locale-${noLangFallback}`}`
     }
 }
