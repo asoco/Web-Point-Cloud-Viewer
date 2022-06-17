@@ -251,18 +251,24 @@ class App {
         
     }
     initGUI() {
+        dat.GUI.TEXT_CLOSED = this.#getUIstring("text-closed", "Close controls");
+        dat.GUI.TEXT_OPEN = this.#getUIstring("text-open", "Open controls");
+        
         if (this.gui) this.gui.destroy();
         this.gui = new dat.GUI();
 
-        this.appearenceFolder = this.gui.addFolder("Appearence");
+        this.appearenceFolder = this.gui.addFolder(this.#getUIstring("appearance", "Appearance"));
         this.appearenceFolder.add(this.appearence.pointType, 'circle').onChange(function (enabled) {
             for (let [type, obj] of Object.entries(this.objects)) {
                 if (!obj.points || !obj.material) continue;
                 obj.material.uniforms.circle.value = enabled;
             }
         }.bind(this)).name(this.#getUIstring("circle", 'Points as circle'))
-        this.appearenceFolder.add(this.appearence.edgeDetection, 'value').name('Edge detection');
-        this.appearenceFolder.add(this.appearence.activeCamera, 'type', ['perspective', 'ortho']).name("Camera").onChange(function(event) {
+        this.appearenceFolder.add(this.appearence.edgeDetection, 'value').name(this.#getUIstring("edge-detection", 'Edge detection'));
+        this.appearenceFolder.add(this.appearence.activeCamera, 'type', {
+            "перспектива": "perspective",
+            'орто':'ortho'
+        }).name(this.#getUIstring("camera", 'Camera')).onChange(function(event) {
             if (event === "perspective") {
                 this.activeCamera = this.camera;
                 this.activeCamera.position.copy(this.cameraOrtho.position);
@@ -276,7 +282,7 @@ class App {
             this.renderPass.camera = this.activeCamera;
         }.bind(this))
         this.appearenceFolder.add(this.appearence.useSizeAttenuation, "value")
-            .name("Size Attenuation")
+            .name(this.#getUIstring("size-attenuation", "Size Attenuation"))
             .onChange(function (event) {
             console.log(event);
             for (let [type, obj] of Object.entries(this.objects)) {
@@ -307,13 +313,13 @@ class App {
             },
             preserveSettings: false,
         };
-        this.loadFolder = this.gui.addFolder("Load data");
-        this.loadbtn = this.loadFolder.add(this.loaddataconf, "add").name(this.#getUIstring('load-data', "Load data"));
-        this.preserveSettings = this.loadFolder.add(this.loaddataconf, "preserveSettings").name("Preserve Settings");
+        this.loadFolder = this.gui.addFolder(this.#getUIstring('load-data', "Load data"));
+        this.loadbtn = this.loadFolder.add(this.loaddataconf, "add").name(this.#getUIstring('load-file', "Load file"));
+        this.preserveSettings = this.loadFolder.add(this.loaddataconf, "preserveSettings").name(this.#getUIstring('preserve-settings', "Preserve settings"));
 
-        this.settingFolder = this.gui.addFolder("Settings");
-        this.settingSave = this.settingFolder.add(this.settings.saveSettings, "value").name("Save Settings On Exit");
-        this.settingClear = this.settingFolder.add(this.settings.saveSettings, "clear").name("Clear");
+        this.settingFolder = this.gui.addFolder(this.#getUIstring('settings', "Settings"));
+        this.settingSave = this.settingFolder.add(this.settings.saveSettings, "value").name(this.#getUIstring('save-settings-on-exit', "Save Settings On Exit"));
+        this.settingClear = this.settingFolder.add(this.settings.saveSettings, "clear").name(this.#getUIstring('clear', "Clear"));
         // this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
         this.measurementSettings = {
             ruler: {

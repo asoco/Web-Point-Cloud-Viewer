@@ -10,7 +10,13 @@
             "color-scheme": "Цветовая схема",
             "classification": "Классификация",
             "color-mode": "Режим цвета",
-            "load-data": "Загрузить файл",
+            "load-data": "Загрузка данных",
+            "load-file": "Загрузить файл",
+            "preserve-settings": "Сохранить настройки",
+            "settings": "Настройки",
+            "save-settings-on-exit": "Сохранить при выходе",
+            "text-closed": "Закрыть меню",
+            "text-open": "Открыть меню",
             "measurements": "Измерения",
             "ruler": "Рулетка",
             "info": "Информация о точке",
@@ -35,6 +41,8 @@
             "nav-right": "Справа",
             "nav-front": "Спереди",
             "nav-back": "Сзади",
+            "camera": "Камера",
+            "size-attenuation": "Перспективное ослабление",
             "_blank":""
         }
     },
@@ -49,7 +57,13 @@
             "color-scheme": "Color scheme",
             "classification": "Classification",
             "color-mode": "Color mode",
-            "load-data": "Load file",
+            "load-data": "Load data",
+            "load-file": "Load file",
+            "preserve-settings": "Preserve settings",
+            "settings": "Settings",
+            "save-settings-on-exit": "Save Settings On Exit",
+            "text-closed": "Close controls",
+            "text-open": "Open controls",
             "measurements": "Measurements",
             "ruler": "Ruler",
             "info": "Point info",
@@ -74,6 +88,8 @@
             "nav-right": "Right",
             "nav-front": "Front",
             "nav-back": "Back",
+            "camera": "Camera",
+            "size-attenuation": "Size Attenuation",
             "_blank":""
         }
     }
