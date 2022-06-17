@@ -3,6 +3,7 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import Stats from 'stats.js/build/stats.min.js';
+import localization  from './locale/locale.json';
 import * as dat from 'dat.gui'
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Profile } from './js/profile.js';
@@ -21,10 +22,12 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { SobelOperatorShader } from './js/sobel/SobelOperatorShader';
 
+
 class App {
     constructor() {
         this.settings={
-            resetSceneOnLoad:true
+            resetSceneOnLoad:true,
+            lang:"ru"
         }
         this.data = [];
         this.scene = {};
@@ -209,36 +212,36 @@ class App {
             }
         }
 
-        this.appearenceFolder = this.gui.addFolder("Appearence");
-        this.appearenceFolder.add(this.appearence.pointType, 'circle').onChange(function (enabled) {
+        this.appearenceFolder = this.gui.addFolder(this.#getUIstring("appearance", "Appearance"));
+        this.appearenceFolder.add(this.appearence.pointType,"circle").onChange(function (enabled) {
             for (let [type, obj] of Object.entries(this.objects)) {
                 if (!obj.points || !obj.material) continue;
                 obj.material.uniforms.circle.value = enabled;
             }
-        }.bind(this))
-        this.appearenceFolder.add(this.appearence.edgeDetection, 'value').name('Edge detection');
+        }.bind(this)).name(this.#getUIstring("circle", 'Points as circle'))
+        this.appearenceFolder.add(this.appearence.edgeDetection, 'value').name(this.#getUIstring("edge-detection", 'Edge detection'));
 
-        this.toggleFolder = this.gui.addFolder("Visibility");
-        this.sizeFolder = this.gui.addFolder("Size");
-        this.colorFolder = this.gui.addFolder("Color scheme");
+        this.toggleFolder = this.gui.addFolder(this.#getUIstring("visibility", "Class visibility"));
+        this.sizeFolder = this.gui.addFolder(this.#getUIstring("size", "Points size"));
+        this.colorFolder = this.gui.addFolder(this.#getUIstring("color-scheme", "Color scheme"));
         if (!this.colorConfig)
-            this.colorConfig = { option: "classification", value: 1};
-        this.colorFolder.add(this.colorConfig, 'option', ['classification', 'rgb']).onChange(function(event) {        
-            this.colorConfig.value = event === 'classification' ? 1 : 2;
+            this.colorConfig = { option: this.#getUIstring('classification', 'Classification'), value: 1};
+        this.colorFolder.add(this.colorConfig, 'option', [this.#getUIstring('classification', 'Classification'), 'RGB']).onChange(function(event) {        
+            this.colorConfig.value = event === this.#getUIstring('classification', 'Classification') ? 1 : 2;
             for (let [type, obj] of Object.entries(this.objects)) {
                 if (!obj.points || !obj.material) continue;
-                if (event === 'rgb')
+                if (event === 'RGB')
                     obj.material.uniforms.type.value = 2
                 else
                     obj.material.uniforms.type.value = 1
             }
-        }.bind(this));
+        }.bind(this)).name(this.#getUIstring('color-mode', 'Color mode'));
         let loaddataconf = {
             add: function () {
                 document.getElementById("file-input").click();
             },
         };
-        this.loadbtn = this.gui.add(loaddataconf, "add").name("Load data");
+        this.loadbtn = this.gui.add(loaddataconf, "add").name(this.#getUIstring('load-data', "Load data"));
         // this.gui.add(this.settings, "resetSceneOnLoad", true).name("Reset on load");
         this.measurementSettings = {
             ruler: {
@@ -252,18 +255,18 @@ class App {
             markerColor: '#ffff00',
             lineColor: '#0000ff',
         }
-        this.measurement = this.gui.addFolder('Measurements');   
+        this.measurement = this.gui.addFolder(this.#getUIstring('measurements', 'Measurements'));   
 
-        this.ruler = this.measurement.addFolder('Ruler');
-        this.ruler.add(this.measurementSettings.ruler, "enable", false).name("Enable"); 
-        this.ruler.add(this.measurementSettings.ruler, 'clear').name("Clear");
+        this.ruler = this.measurement.addFolder(this.#getUIstring('ruler', 'Ruler'));
+        this.ruler.add(this.measurementSettings.ruler, "enable", false).name(this.#getUIstring('enable', "Enable")); 
+        this.ruler.add(this.measurementSettings.ruler, 'clear').name(this.#getUIstring('clear', "Clear"));
         
-        this.infoMarker = this.measurement.addFolder('Info');
-        this.infoMarker.add(this.measurementSettings.info, "enable", false).name("Enable"); 
-        this.infoMarker.add(this.measurementSettings.info, 'clear').name("Clear");
+        this.infoMarker = this.measurement.addFolder(this.#getUIstring('info', 'Info'));
+        this.infoMarker.add(this.measurementSettings.info, "enable", false).name(this.#getUIstring('enable', "Enable")); 
+        this.infoMarker.add(this.measurementSettings.info, 'clear').name(this.#getUIstring('clear', "Clear"));
         
-        this.measurement.addColor(this.measurementSettings, 'markerColor').name('Marker Color').onChange(this.#markerColorChange.bind(this));
-        this.measurement.addColor(this.measurementSettings, 'lineColor').name('Line Color').onChange(this.#lineColorChange.bind(this));
+        this.measurement.addColor(this.measurementSettings, 'markerColor').name(this.#getUIstring('markerColor', 'Marker Color')).onChange(this.#markerColorChange.bind(this));
+        this.measurement.addColor(this.measurementSettings, 'lineColor').name(this.#getUIstring('lineColor', 'Line Color')).onChange(this.#lineColorChange.bind(this));
 
         this.loaddGUI();
     }
@@ -1007,6 +1010,16 @@ class App {
 
         
         this.centerPoint = new THREE.Vector3(meanX, meanY, meanZ);
+    }
+    /**
+     * 
+     * @param {String} stringID 
+     * @param {String} fallback 
+     */
+    #getUIstring(stringID,fallback){
+        let lang = this?.settings?.lang ? this.settings.lang : "en"; 
+        let noLangFallback = (Math.random() + 1).toString(36).substring(7);
+        return `${localization?.[lang]?.["ui"]?.[stringID]  || fallback || stringID || `no-locale-${noLangFallback}`}`
     }
 }
 window.app = new App();
